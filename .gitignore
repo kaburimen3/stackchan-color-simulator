@@ -1,0 +1,7 @@
+# build/temp artifacts
+__pycache__/
+*.pyc
+_*.png
+_*.mjs
+.DS_Store
+Thumbs.db

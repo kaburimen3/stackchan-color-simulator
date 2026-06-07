@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Stack-chan 配色シミュレーター (K151)</title>
+<meta name="description" content="M5Stack K151 / CoreS3 の Stack-chan を 3D プリントするときの配色を、ブラウザでパーツごとに試せる非公式ツール。">
+<!-- Social card (X / OGP). ogp.png is an original illustration; no official logos/photos. -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Stack-chan 配色シミュレーター">
+<meta property="og:description" content="M5Stack K151 / CoreS3 の3Dプリント配色を、ブラウザでパーツごとに試せる非公式ツール。">
+<meta property="og:url" content="https://kaburimen3.github.io/stackchan-color-simulator/">
+<meta property="og:image" content="https://kaburimen3.github.io/stackchan-color-simulator/ogp.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Stack-chan 配色シミュレーター">
+<meta name="twitter:description" content="M5Stack K151 / CoreS3 の3Dプリント配色を、ブラウザで試せる非公式ツール。">
+<meta name="twitter:image" content="https://kaburimen3.github.io/stackchan-color-simulator/ogp.png">
+<style>
+  :root{ --panel:#1c1f26; --panel2:#262a33; --line:#363b46; --text:#e6e8ec; --sub:#9aa0ab; --accent:#4ea1ff; }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; height:100%; overflow:hidden; font-family:"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic UI",system-ui,sans-serif; color:var(--text); background:#11131a; }
+  #app{ position:fixed; inset:0; }
+  #c{ width:100%; height:100%; display:block; }
+  #panel{ position:fixed; top:0; left:0; height:100%; width:330px; background:var(--panel); border-right:1px solid var(--line);
+          display:flex; flex-direction:column; z-index:10; box-shadow:2px 0 16px rgba(0,0,0,.35); }
+  #panel header{ padding:14px 16px 10px; border-bottom:1px solid var(--line); }
+  #panel header h1{ font-size:15px; margin:0 0 2px; letter-spacing:.02em; }
+  #panel header p{ font-size:11px; color:var(--sub); margin:0; }
+  .scroll{ overflow-y:auto; flex:1; padding:10px 12px 14px; }
+  .grp{ margin:10px 0 4px; font-size:11px; color:var(--sub); display:flex; align-items:center; gap:8px; }
+  .grp .gbtn{ font-size:10px; color:var(--accent); cursor:pointer; border:1px solid var(--line); border-radius:5px; padding:1px 6px; background:transparent; }
+  .grp .gbtn:hover{ background:var(--panel2); }
+  .row{ display:flex; align-items:center; gap:10px; padding:7px 8px; border-radius:8px; cursor:pointer; }
+  .row:hover{ background:var(--panel2); }
+  .row.sel{ background:#2b3550; outline:1px solid var(--accent); }
+  .sw{ width:22px; height:22px; border-radius:6px; border:1px solid rgba(255,255,255,.25); flex:0 0 auto;
+       background-image:linear-gradient(45deg,#888 25%,transparent 25%),linear-gradient(-45deg,#888 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#888 75%),linear-gradient(-45deg,transparent 75%,#888 75%);
+       background-size:8px 8px; background-position:0 0,0 4px,4px -4px,-4px 0; }
+  .sw>i{ display:block; width:100%; height:100%; border-radius:5px; }
+  .nm{ font-size:12.5px; flex:1; }
+  .fin{ font-size:10px; color:var(--sub); }
+  #pal{ border-top:1px solid var(--line); padding:10px 12px 12px; background:var(--panel); }
+  #notice{ border-top:1px solid var(--line); padding:8px 12px 10px; background:var(--panel); font-size:10px; color:var(--sub); line-height:1.5; }
+  #notice p{ margin:0 0 4px; }
+  #notice b{ color:#e8b96b; }
+  #notice a{ color:var(--accent); }
+  #palTarget{ font-size:11px; color:var(--sub); margin-bottom:8px; }
+  #palTarget b{ color:var(--text); }
+  .pcat{ font-size:10px; color:var(--sub); margin:8px 0 4px; }
+  .chips{ display:flex; flex-wrap:wrap; gap:6px; }
+  .chip{ width:26px; height:26px; border-radius:7px; cursor:pointer; border:1px solid rgba(255,255,255,.18); position:relative; }
+  .chip:hover{ transform:scale(1.08); }
+  .chip[data-fin="metallic"]::after,.chip[data-fin="silk"]::after{ content:""; position:absolute; inset:0; border-radius:6px; background:linear-gradient(135deg,rgba(255,255,255,.55),transparent 55%); }
+  .chip[data-fin="clear"]{ opacity:.7; box-shadow:inset 0 0 0 2px rgba(255,255,255,.35); }
+  .pickrow{ display:flex; align-items:center; gap:8px; margin-top:10px; }
+  .pickrow input[type=color]{ width:34px; height:30px; border:none; background:none; cursor:pointer; padding:0; }
+  select,.btn{ background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:7px; padding:5px 8px; font-size:12px; cursor:pointer; }
+  .btn:hover{ border-color:var(--accent); }
+  .btn.on{ border-color:var(--accent); color:#fff; background:#2b3550; }
+  #bar{ position:fixed; top:10px; right:12px; display:flex; gap:8px; z-index:11; flex-wrap:wrap; justify-content:flex-end; max-width:calc(100% - 360px); }
+  #hint{ position:fixed; bottom:10px; left:342px; font-size:11px; color:var(--sub); z-index:9; background:rgba(0,0,0,.25); padding:4px 8px; border-radius:6px;}
+  /* adjust panel */
+  #adjPanel{ position:fixed; top:54px; right:12px; width:300px; background:var(--panel); border:1px solid var(--line); border-radius:10px;
+             padding:12px; z-index:12; display:none; box-shadow:0 8px 28px rgba(0,0,0,.45); }
+  #adjPanel h2{ font-size:13px; margin:0 0 8px; display:flex; justify-content:space-between; align-items:center; }
+  #adjSel{ font-size:11px; color:var(--accent); }
+  .arow{ display:flex; gap:6px; align-items:center; margin:8px 0; flex-wrap:wrap; }
+  .arow label{ font-size:11px; color:var(--sub); display:flex; align-items:center; gap:4px; }
+  .amode.on{ background:var(--accent); color:#06121f; border-color:var(--accent); }
+  .nums{ display:grid; grid-template-columns:auto repeat(3,1fr); gap:5px 6px; align-items:center; margin:8px 0; }
+  .nums span{ font-size:11px; color:var(--sub); }
+  .nums input{ width:100%; background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:5px; padding:3px 4px; font-size:11px; }
+  .ahint{ font-size:10.5px; color:var(--sub); line-height:1.5; margin-top:6px; }
+  #loading{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:10px; background:#11131a; z-index:50; color:var(--sub); font-size:13px; }
+  .spin{ width:30px;height:30px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp 1s linear infinite;}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  #err{ max-width:520px; text-align:center; color:#ff9a9a; font-size:12px; line-height:1.6; }
+  @media (max-width:760px){ #panel{ width:280px; } #bar{ max-width:calc(100% - 300px);} #hint{left:292px} }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+}}
+</script>
+</head>
+<body>
+<div id="app"><canvas id="c"></canvas></div>
+
+<div id="panel">
+  <header>
+    <h1>Stack-chan 配色シミュレーター</h1>
+    <p>M5Stack K151 ボディ ／ パーツごとに色を変えて確認</p>
+  </header>
+  <div class="scroll" id="parts"></div>
+  <div id="pal">
+    <div id="palTarget">対象: <b id="tgtName">本体（顔まわり）</b></div>
+    <div id="chipArea"></div>
+    <div class="pickrow">
+      <label style="font-size:11px;color:var(--sub)">自由色</label>
+      <input type="color" id="freeColor" value="#ededed">
+      <select id="freeFinish" title="質感">
+        <option value="matte">マット</option>
+        <option value="silk">シルク</option>
+        <option value="metallic">メタリック</option>
+        <option value="clear">透明</option>
+        <option value="wood">木目</option>
+      </select>
+    </div>
+  </div>
+  <footer id="notice">
+    <p>⚠️ 個人が趣味で作った<b>非公式</b>ツールです。M5Stack 社・Stack-chan プロジェクトとは無関係。表示色は実機・実際のフィラメントとは異なります（配色イメージの参考用）。</p>
+    <p><b>現状有姿で提供。動作保証・サポート・不具合修正・更新は行いません。自己責任でご利用ください。</b></p>
+    <p>3Dモデル: M5Stack K151 / CoreS3-Lite（MIT ©2021 M5Stack） ・ three.js（MIT） ・ <a href="https://github.com/kaburimen3/stackchan-color-simulator" target="_blank" rel="noopener noreferrer">GitHub / 詳細</a></p>
+  </footer>
+</div>
+
+<div id="bar">
+  <button class="btn" id="adjust" title="パーツの位置・向き・大きさを調整">🔧 調整</button>
+  <select id="scheme" class="btn" title="作例スキーム">
+    <option value="">作例スキーム…</option>
+  </select>
+  <button class="btn" id="bg">背景</button>
+  <button class="btn" id="spin">自動回転</button>
+  <button class="btn" id="save">保存</button>
+  <button class="btn" id="load">読込</button>
+  <button class="btn" id="reset">リセット</button>
+  <button class="btn" id="shot">画像保存</button>
+</div>
+
+<div id="adjPanel">
+  <h2>🔧 調整モード <span id="adjSel">パーツ未選択</span></h2>
+  <div class="arow">
+    <button class="btn amode on" data-mode="translate">移動</button>
+    <button class="btn amode" data-mode="rotate">回転</button>
+    <button class="btn amode" data-mode="scale">拡縮</button>
+    <label><input type="checkbox" id="snap"> スナップ</label>
+  </div>
+  <div class="nums">
+    <span>位置(mm)</span><input id="px" type="number" step="0.5"><input id="py" type="number" step="0.5"><input id="pz" type="number" step="0.5">
+    <span>回転(°)</span><input id="rx" type="number" step="1"><input id="ry" type="number" step="1"><input id="rz" type="number" step="1">
+    <span>拡縮</span><input id="sx" type="number" step="0.01"><input id="sy" type="number" step="0.01"><input id="sz" type="number" step="0.01">
+  </div>
+  <div class="arow">
+    <button class="btn" id="aUndo" disabled title="Ctrl+Z">↶ 戻す</button>
+    <button class="btn" id="aRedo" disabled title="Ctrl+Y / Ctrl+Shift+Z">↷ 進む</button>
+  </div>
+  <div class="arow">
+    <button class="btn" id="aReset">選択中を初期化</button>
+    <button class="btn" id="aResetAll">全部初期化</button>
+  </div>
+  <div class="arow">
+    <button class="btn" id="aSaveGlb" style="flex:1">💾 調整済みGLBを保存</button>
+    <button class="btn" id="aCopy">📋 値コピー</button>
+  </div>
+  <div class="ahint">パーツをクリックで選択（<b>Shift / Ctrl + クリックで複数選択</b>→まとめて移動・回転・拡縮）。何もない所をクリックで選択解除。<br>完了したら <b>「調整済みGLBを保存」</b> で <code>assembled.glb</code> を書き出し、フォルダのファイルと差し替えてください。</div>
+</div>
+
+<div id="hint">ドラッグ=回転 / ホイール=ズーム / 右ドラッグ=移動 ・ パーツをクリックでも選択できます</div>
+<div id="loading"><div class="spin"></div><div id="lmsg">モデルを読み込み中…</div><div id="err"></div></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { TransformControls } from 'three/addons/controls/TransformControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+/* ---------- metadata ---------- */
+const PARTS = [
+  {id:'MainBody',        jp:'本体（顔まわり）',      group:'頭部'},
+  {id:'CoreS3_Body',     jp:'CoreS3ケース',          group:'頭部'},
+  {id:'LightGuideBar-A', jp:'導光棒A',               group:'導光棒'},
+  {id:'LightGuideBar-B', jp:'導光棒B',               group:'導光棒'},
+  {id:'ServoBody',       jp:'サーボボディ（首）',    group:'首 / サーボ'},
+  {id:'ServoCover',      jp:'サーボカバー',          group:'首 / サーボ'},
+  {id:'ServoSideCover',  jp:'サーボサイドカバー',    group:'首 / サーボ'},
+  {id:'ServoArm',        jp:'サーボアーム',          group:'首 / サーボ'},
+  {id:'BearingFixture',  jp:'ベアリング固定具',      group:'首 / サーボ'},
+  {id:'Base',            jp:'ベース（台座）',        group:'台座'},
+  {id:'BaseCover',       jp:'ベースカバー（底ふた）',group:'台座'},
+];
+const GROUPS = ['頭部','導光棒','首 / サーボ','台座'];
+const ADJUSTABLE = PARTS.map(p=>p.id); // CoreS3 device is generated & parented to the head (not separately adjustable)
+const ADJ_LABEL = Object.fromEntries(PARTS.map(p=>[p.id,p.jp]));
+
+const DEFAULT_SCHEME = {
+  'MainBody':{hex:'#ededed',finish:'matte'},
+  'CoreS3_Body':{hex:'#2a2c31',finish:'matte'},
+  'LightGuideBar-A':{hex:'#7fe1dd',finish:'clear'},'LightGuideBar-B':{hex:'#7fe1dd',finish:'clear'},
+  'ServoBody':{hex:'#9a9ca0',finish:'matte'},'ServoCover':{hex:'#9a9ca0',finish:'matte'},'ServoSideCover':{hex:'#9a9ca0',finish:'matte'},
+  'ServoArm':{hex:'#4a4d52',finish:'matte'},'BearingFixture':{hex:'#4a4d52',finish:'matte'},
+  'Base':{hex:'#54565b',finish:'matte'},'BaseCover':{hex:'#54565b',finish:'matte'},
+};
+const PRESETS = {
+  '標準マット':[
+    {n:'ホワイト',hex:'#f3f3f3'},{n:'ナチュラル',hex:'#e9e4d8'},{n:'ライトグレー',hex:'#c4c6c9'},
+    {n:'グレー',hex:'#8a8d92'},{n:'ダークグレー',hex:'#4a4d52'},{n:'ブラック',hex:'#1c1c1e'},
+    {n:'レッド',hex:'#c0392b'},{n:'オレンジ',hex:'#e67e22'},{n:'イエロー',hex:'#f1c40f'},
+    {n:'グリーン',hex:'#27ae60'},{n:'ミント',hex:'#74d1b6'},{n:'ブルー',hex:'#2980b9'},
+    {n:'ネイビー',hex:'#2c3e50'},{n:'パープル',hex:'#8e44ad'},{n:'ピンク',hex:'#e84393'},
+  ],
+  'シルク / メタリック':[
+    {n:'シルバー',hex:'#c8ccd0',finish:'metallic'},{n:'ゴールド',hex:'#d4af37',finish:'metallic'},
+    {n:'カッパー',hex:'#b87333',finish:'metallic'},{n:'ガンメタル',hex:'#54585f',finish:'metallic'},
+    {n:'シルク白',hex:'#f0f0f0',finish:'silk'},{n:'シルク青',hex:'#3aa0d8',finish:'silk'},
+    {n:'シルク赤',hex:'#d0463b',finish:'silk'},{n:'シルク紫',hex:'#9b59b6',finish:'silk'},
+  ],
+  '透明 / クリア':[
+    {n:'クリア',hex:'#eaf6ff',finish:'clear'},{n:'クリア青',hex:'#bfe9ff',finish:'clear'},
+    {n:'クリア緑',hex:'#c8f7d4',finish:'clear'},{n:'クリア赤',hex:'#ffc9c9',finish:'clear'},{n:'クリア黄',hex:'#fff2bf',finish:'clear'},
+  ],
+  '木目':[ {n:'ウッド',hex:'#9c6b3f',finish:'wood'},{n:'ダークウッド',hex:'#6e4a2b',finish:'wood'} ],
+};
+const SCHEMES = {
+  '純正風 (白×グレー)': DEFAULT_SCHEME,
+  'モノトーン (黒×白)':{
+    'MainBody':{hex:'#1c1c1e',finish:'matte'},'Base':{hex:'#1c1c1e',finish:'matte'},'BaseCover':{hex:'#1c1c1e',finish:'matte'},
+    'ServoBody':{hex:'#f3f3f3',finish:'matte'},'ServoCover':{hex:'#f3f3f3',finish:'matte'},'ServoSideCover':{hex:'#f3f3f3',finish:'matte'},
+    'ServoArm':{hex:'#1c1c1e',finish:'matte'},'BearingFixture':{hex:'#1c1c1e',finish:'matte'},
+    'LightGuideBar-A':{hex:'#eaf6ff',finish:'clear'},'LightGuideBar-B':{hex:'#eaf6ff',finish:'clear'},
+  },
+  'ポップ (カラフル)':{
+    'MainBody':{hex:'#f3f3f3',finish:'matte'},'Base':{hex:'#2980b9',finish:'matte'},'BaseCover':{hex:'#2980b9',finish:'matte'},
+    'ServoBody':{hex:'#e67e22',finish:'matte'},'ServoCover':{hex:'#f1c40f',finish:'matte'},'ServoSideCover':{hex:'#f1c40f',finish:'matte'},
+    'ServoArm':{hex:'#27ae60',finish:'matte'},'BearingFixture':{hex:'#27ae60',finish:'matte'},
+    'LightGuideBar-A':{hex:'#c8f7d4',finish:'clear'},'LightGuideBar-B':{hex:'#ffc9c9',finish:'clear'},
+  },
+  '木と白':{
+    'MainBody':{hex:'#f3f3f3',finish:'matte'},'Base':{hex:'#9c6b3f',finish:'wood'},'BaseCover':{hex:'#9c6b3f',finish:'wood'},
+    'ServoBody':{hex:'#e9e4d8',finish:'matte'},'ServoCover':{hex:'#e9e4d8',finish:'matte'},'ServoSideCover':{hex:'#e9e4d8',finish:'matte'},
+    'ServoArm':{hex:'#6e4a2b',finish:'wood'},'BearingFixture':{hex:'#6e4a2b',finish:'wood'},
+    'LightGuideBar-A':{hex:'#fff2bf',finish:'clear'},'LightGuideBar-B':{hex:'#fff2bf',finish:'clear'},
+  },
+  'ゴールド×黒':{
+    'MainBody':{hex:'#1c1c1e',finish:'matte'},'Base':{hex:'#1c1c1e',finish:'matte'},'BaseCover':{hex:'#1c1c1e',finish:'matte'},
+    'ServoBody':{hex:'#d4af37',finish:'metallic'},'ServoCover':{hex:'#d4af37',finish:'metallic'},'ServoSideCover':{hex:'#d4af37',finish:'metallic'},
+    'ServoArm':{hex:'#d4af37',finish:'metallic'},'BearingFixture':{hex:'#d4af37',finish:'metallic'},
+    'LightGuideBar-A':{hex:'#fff2bf',finish:'clear'},'LightGuideBar-B':{hex:'#fff2bf',finish:'clear'},
+  },
+};
+
+/* ---------- three.js scene ---------- */
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true, preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+const BG = [ {b:'#dfe4ea',g:0.18}, {b:'#2a2e36',g:0.30}, {b:'#0c0d11',g:0.45} ];
+let bgIdx = 0;
+
+const camera = new THREE.PerspectiveCamera(38, 1, 0.001, 100);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.autoRotateSpeed = 2.2;
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+const hemi = new THREE.HemisphereLight(0xffffff, 0x444a55, 0.5); scene.add(hemi);
+const key = new THREE.DirectionalLight(0xffffff, 2.2);
+key.position.set(0.18,0.32,0.28); key.castShadow = true;
+key.shadow.mapSize.set(2048,2048); key.shadow.bias = -0.0005; scene.add(key);
+const fill = new THREE.DirectionalLight(0xffffff, 0.5); fill.position.set(-0.25,0.12,-0.18); scene.add(fill);
+
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(2,2), new THREE.ShadowMaterial({opacity:0.28}));
+ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; scene.add(ground);
+
+function setBackground(){ const cfg=BG[bgIdx]; scene.background=new THREE.Color(cfg.b); ground.material.opacity=cfg.g; }
+setBackground();
+
+/* transform gizmo (adjust mode) */
+let adjSel=[], anchor=null; const anchorPrevW=new THREE.Matrix4();   // multi-select state
+const gizmo = new TransformControls(camera, renderer.domElement);
+gizmo.addEventListener('dragging-changed', e=>{ controls.enabled = !e.value; });
+gizmo.addEventListener('objectChange', ()=>{
+  if(adjSel.length>1 && anchor && gizmo.object===anchor){
+    // apply the anchor's incremental world-delta to every selected part
+    anchor.updateMatrixWorld(true);
+    const delta=anchor.matrixWorld.clone().multiply(anchorPrevW.clone().invert());
+    adjSel.forEach(m=>{ m.updateMatrixWorld(true);
+      const w=delta.clone().multiply(m.matrixWorld);
+      if(m.parent) w.premultiply(m.parent.matrixWorld.clone().invert());
+      w.decompose(m.position,m.quaternion,m.scale); });
+    anchorPrevW.copy(anchor.matrixWorld);
+  } else syncAdjustInputs();
+});
+gizmo.setSize(0.9); gizmo.enabled=false; gizmo.visible=false;
+scene.add(gizmo);
+
+/* ---------- CoreS3 front texture: full black glass face with a 2" display + camera/sensor row ---------- */
+function makeFaceTexture(){
+  const s=1024, cv=document.createElement('canvas'); cv.width=cv.height=s; const x=cv.getContext('2d');
+  const rr=(X,Y,W,H,r)=>{ x.beginPath(); if(x.roundRect) x.roundRect(X,Y,W,H,r); else x.rect(X,Y,W,H); };
+  // rounded black glass panel (canvas stays transparent outside so the white head shows around/at corners)
+  const pad=s*0.010, pr=s*0.10;
+  x.fillStyle='#0a0b0d'; rr(pad,pad,s-2*pad,s-2*pad,pr); x.fill();
+  const gl=x.createLinearGradient(0,pad,s*0.7,s*0.7); gl.addColorStop(0,'rgba(255,255,255,0.06)'); gl.addColorStop(0.5,'rgba(255,255,255,0)');
+  x.fillStyle=gl; rr(pad,pad,s-2*pad,s-2*pad,pr); x.fill();
+  // 2-inch display: landscape 4:3, upper-centre, with clear black bezel around it
+  const dw=s*0.70, dh=s*0.525, dx=(s-dw)/2, dy=s*0.150;
+  x.fillStyle='#23262c'; rr(dx-5,dy-5,dw+10,dh+10,9); x.fill();         // thin display frame
+  const g=x.createLinearGradient(0,dy,0,dy+dh); g.addColorStop(0,'#14171d'); g.addColorStop(1,'#090b0e');
+  x.fillStyle=g; rr(dx,dy,dw,dh,6); x.fill();
+  // face (eyes above mouth)
+  const cxp=s*0.5; x.fillStyle='#ffffff';
+  const eyeY=dy+dh*0.42, eyeDX=dw*0.205, er=s*0.0215;
+  x.beginPath(); x.arc(cxp-eyeDX,eyeY,er,0,7); x.fill();
+  x.beginPath(); x.arc(cxp+eyeDX,eyeY,er,0,7); x.fill();
+  const mw=dw*0.20, mh=s*0.015; rr(cxp-mw/2, dy+dh*0.66, mw, mh, mh/2); x.fill();
+  // camera + sensor row on the glass, below the display
+  const by=s*0.80;
+  x.strokeStyle='#d98a33'; x.lineWidth=s*0.006; x.beginPath(); x.arc(cxp,by,s*0.023,0,7); x.stroke();
+  x.fillStyle='#04060b'; x.beginPath(); x.arc(cxp,by,s*0.016,0,7); x.fill();
+  x.fillStyle='#26354e'; x.beginPath(); x.arc(cxp-s*0.005,by-s*0.005,s*0.006,0,7); x.fill();
+  x.fillStyle='#2b2f3a';
+  [[0.31,0.010],[0.585,0.0055],[0.625,0.0055],[0.69,0.010]].forEach(([fx,r])=>{ x.beginPath(); x.arc(s*fx,by,s*r,0,7); x.fill(); });
+  // three subtle capacitive touch marks along the very bottom
+  x.fillStyle='#1a1d24';
+  [0.40,0.5,0.60].forEach(fx=>{ x.beginPath(); x.arc(s*fx,s*0.915,s*0.006,0,7); x.fill(); });
+  const t=new THREE.CanvasTexture(cv); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=8; return t;
+}
+
+/* ---------- CoreS3 screen overlay: crisp black glass panel + white eyes/mouth, transparent around (so the colored case shows)
+   coordinates are normalised to the M5_face model's front (X 109..147 -> u 0..1, Z 0..38 -> v top..bottom) ---------- */
+function makeScreenTexture(){
+  // CoreS3 front "decal": full black-glass face (transparent outside) modelled on the official Stack-chan photo:
+  // recessed display with dot eyes + straight mouth (upper), power button (orange ring) + sensors (lower).
+  const s=1024, cv=document.createElement('canvas'); cv.width=cv.height=s; const x=cv.getContext('2d');
+  const rr=(X,Y,W,H,r)=>{ x.beginPath(); if(x.roundRect) x.roundRect(X,Y,W,H,r); else x.rect(X,Y,W,H); };
+  // black glass front fills the plate (rounded corners); outside stays transparent so the case rim shows
+  x.fillStyle='#0a0b0d'; rr(s*0.02,s*0.02,s*0.96,s*0.96,s*0.075); x.fill();
+  const gl=x.createLinearGradient(0,0,s*0.55,s*0.75); gl.addColorStop(0,'rgba(255,255,255,0.06)'); gl.addColorStop(0.45,'rgba(255,255,255,0)');
+  x.fillStyle=gl; rr(s*0.02,s*0.02,s*0.96,s*0.96,s*0.075); x.fill();
+  // recessed landscape display (upper-centre)
+  const dL=0.105*s, dR=0.895*s, dT=0.075*s, dB=0.595*s;
+  x.fillStyle='#23262c'; rr(dL-5,dT-5,(dR-dL)+10,(dB-dT)+10,12); x.fill();   // thin display frame
+  const g=x.createLinearGradient(0,dT,0,dB); g.addColorStop(0,'#15181d'); g.addColorStop(1,'#0b0d11');
+  x.fillStyle=g; rr(dL,dT,dR-dL,dB-dT,8); x.fill();
+  // face: two dot eyes + straight mouth (white)
+  x.fillStyle='#f2f2f2';
+  const er=0.023*s, eyeY=0.315*s;
+  x.beginPath(); x.arc(0.378*s,eyeY,er,0,7); x.fill();
+  x.beginPath(); x.arc(0.622*s,eyeY,er,0,7); x.fill();
+  const mw=0.175*s, mh=0.018*s; rr(0.5*s-mw/2, 0.46*s-mh/2, mw, mh, mh/2); x.fill();
+  // power button: orange ring + power glyph (centre, below display)
+  const by=0.775*s, cxp=0.5*s;
+  x.strokeStyle='#d9892f'; x.lineCap='round';
+  x.lineWidth=s*0.0075; x.beginPath(); x.arc(cxp,by,s*0.046,0,7); x.stroke();
+  x.lineWidth=s*0.006; x.beginPath(); x.arc(cxp,by,s*0.022,Math.PI*-0.35,Math.PI*1.35); x.stroke();
+  x.beginPath(); x.moveTo(cxp,by-s*0.03); x.lineTo(cxp,by-s*0.006); x.stroke();
+  // small sensor dots beside the button + side touch/mic marks
+  x.fillStyle='#2b313b';
+  [0.405,0.595].forEach(fx=>{ x.beginPath(); x.arc(fx*s,by,s*0.006,0,7); x.fill(); });
+  x.fillStyle='#191d23';
+  [0.165,0.835].forEach(fx=>{ rr(fx*s-s*0.02, by-s*0.012, s*0.04, s*0.024, s*0.01); x.fill(); });
+  const t=new THREE.CanvasTexture(cv); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=8; return t;
+}
+
+// centred rounded-rectangle plane geometry so the CoreS3 front (backing + glass) tucks inside the case opening's rounded corners
+function roundedRectGeom(w,h,r){
+  const s=new THREE.Shape(); const x=-w/2,y=-h/2;
+  s.moveTo(x+r,y); s.lineTo(x+w-r,y); s.quadraticCurveTo(x+w,y,x+w,y+r);
+  s.lineTo(x+w,y+h-r); s.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  s.lineTo(x+r,y+h); s.quadraticCurveTo(x,y+h,x,y+h-r);
+  s.lineTo(x,y+r); s.quadraticCurveTo(x,y,x+r,y);
+  return new THREE.ShapeGeometry(s);
+}
+
+/* Build the CoreS3 device on the head front using the real flattened M5_face model
+   (parented to the head so it follows it). Falls back to a simple box+texture if the model isn't loaded. */
+let coreS3Group=null;
+function buildCoreS3(head){
+  head.geometry.computeBoundingBox(); const bb=head.geometry.boundingBox; // local space (re-pivoted)
+  const W=bb.max.x-bb.min.x, H=bb.max.y-bb.min.y, S=Math.min(W,H);
+  const cx=(bb.max.x+bb.min.x)/2, cy=(bb.max.y+bb.min.y)/2, frontZ=bb.max.z; // head front faces +Z
+  const grp=new THREE.Group(); grp.name='CoreS3_generated';
+  if(coreS3Template){
+    // CoreS3-Lite case (side frame + back shell) = colorable body; the front "face" is a black-glass texture
+    // plate over the case's front opening (official-photo style). Front=+Z / up=+Y in the GLB.
+    const model=coreS3Template.clone(true);
+    const caseMat=new THREE.MeshPhysicalMaterial({color:0x26282d, roughness:0.5, metalness:0.15, clearcoatRoughness:0.3});
+    matMap['CoreS3_Body']=caseMat;                          // register the case so the color UI can drive it
+    model.traverse(o=>{ if(o.isMesh){ o.material=caseMat; o.castShadow=true; o.receiveShadow=true; o.userData.partId='CoreS3_Body'; o.userData.adjustTarget=grp; pickables.push(o); }});
+    model.updateMatrixWorld(true);
+    const mb=new THREE.Box3().setFromObject(model); const ms=mb.getSize(new THREE.Vector3()), mc=mb.getCenter(new THREE.Vector3());
+    const k=(S*0.92)/ms.x;                                 // fit case width to the head front
+    model.scale.setScalar(k);
+    model.rotation.z=Math.PI;                              // rotate the case 180° (front axis) so the M5 logo / side ports sit on the correct side
+    const depth=ms.z*k;
+    // grp pivot at head front centre (adjust gizmo sits here; default unit transform, persisted/overridden via CoreS3_Xform)
+    grp.position.set(cx, cy, frontZ);
+    const proud=S*0.12;                                    // protrude from the head front so the CoreS3-Lite case sides are visible
+    model.position.set(mc.x*k, mc.y*k, -mc.z*k - depth/2 + proud);  // xy offset sign flipped to keep the 180°-rotated case centred
+    grp.add(model);
+    // black-glass face plate filling the case's front opening edge-to-edge (no gap to the rim; covers the hollow interior)
+    const pw=ms.x*k*0.99;
+    const cr=pw*0.12;   // corner radius: matches the case opening's rounded corners (and the texture's rounded alpha)
+    // opaque dark backing fills the case front opening so the hollow interior never shows through the glass corners
+    const back=new THREE.Mesh(roundedRectGeom(pw,pw,cr),
+      new THREE.MeshStandardMaterial({color:0x0a0b0d, roughness:0.5, metalness:0.1}));
+    back.position.set(0, 0, proud + S*0.002); back.userData.adjustTarget=grp; grp.add(back);
+    // black-glass face texture on top
+    const face=new THREE.Mesh(new THREE.PlaneGeometry(pw,pw),
+      new THREE.MeshBasicMaterial({map:screenTex, transparent:true, toneMapped:false, depthWrite:false}));
+    face.position.set(0, 0, proud + S*0.006); face.renderOrder=4; face.userData.adjustTarget=grp; grp.add(face);
+    // make the whole CoreS3 (case + face) adjustable as one unit in 調整モード
+    grp.name='CoreS3_Body';
+    grp.userData.orig={p:grp.position.clone(), q:grp.quaternion.clone(), s:grp.scale.clone()};
+    allMeshes.push(grp);
+  } else {
+    // fallback: thin black glass faceplate + drawn face texture
+    const bw=S*0.86, depth=S*0.05;
+    const body=new THREE.Mesh(new THREE.BoxGeometry(bw,bw,depth),
+      new THREE.MeshStandardMaterial({color:0x0e0f12, roughness:0.5, metalness:0.2}));
+    body.position.set(cx,cy,frontZ-depth/2+S*0.003); body.castShadow=true; body.receiveShadow=true; grp.add(body);
+    const gw=S*0.90;
+    const glass=new THREE.Mesh(new THREE.PlaneGeometry(gw,gw),
+      new THREE.MeshBasicMaterial({map:faceTex, transparent:true, toneMapped:false, depthWrite:false}));
+    glass.position.set(cx,cy,frontZ+S*0.007); glass.renderOrder=3; grp.add(glass);
+  }
+  head.add(grp); coreS3Group=grp;
+  // keep CoreS3 independent of MainBody in 調整モード (moving the head must NOT drag the case): reparent to the model root, preserving world pose
+  if(modelRoot){ modelRoot.updateMatrixWorld(true); modelRoot.attach(grp); }
+  grp.userData.orig={p:grp.position.clone(), q:grp.quaternion.clone(), s:grp.scale.clone()};
+}
+
+/* ---------- state & materials ---------- */
+const matMap = {};
+let state = structuredClone(DEFAULT_SCHEME);
+let selection = ['MainBody'];
+let modelRoot = null;
+let adjustMode = false;
+let adjPart = null;           // currently gizmo-attached mesh
+let allMeshes = [];
+
+function applyFinish(mat, hex, finish){
+  mat.color.set(hex);
+  mat.transmission=0; mat.metalness=0; mat.clearcoat=0; mat.ior=1.5; mat.transparent=false; mat.opacity=1; mat.depthWrite=true;
+  if(finish==='silk'){ mat.roughness=0.30; mat.clearcoat=0.55; mat.clearcoatRoughness=0.22; }
+  else if(finish==='metallic'){ mat.roughness=0.34; mat.metalness=0.95; }
+  else if(finish==='clear'){ mat.roughness=0.07; mat.transmission=0.95; mat.ior=1.45; mat.thickness=0.05; mat.attenuationDistance=0.06; mat.attenuationColor.set(hex); }
+  else if(finish==='wood'){ mat.roughness=0.80; }
+  else { mat.roughness=0.62; }
+  mat.needsUpdate=true;
+}
+function applyPart(id){ const m=matMap[id]; if(!m) return; const s=state[id]||{hex:'#ccc',finish:'matte'}; applyFinish(m,s.hex,s.finish||'matte'); }
+function applyAll(){ PARTS.forEach(p=>applyPart(p.id)); refreshSwatches(); }
+
+/* ---------- color UI ---------- */
+const partsEl=document.getElementById('parts');
+function buildParts(){
+  partsEl.innerHTML='';
+  GROUPS.forEach(g=>{
+    const members=PARTS.filter(p=>p.group===g);
+    const head=document.createElement('div'); head.className='grp'; head.innerHTML=`<span>${g}</span>`;
+    const gb=document.createElement('button'); gb.className='gbtn'; gb.textContent='まとめて選択';
+    gb.onclick=(e)=>{ e.stopPropagation(); setSelection(members.map(m=>m.id)); };
+    head.appendChild(gb); partsEl.appendChild(head);
+    members.forEach(p=>{
+      const row=document.createElement('div'); row.className='row'; row.dataset.id=p.id;
+      row.innerHTML=`<span class="sw"><i></i></span><span class="nm">${p.jp}</span><span class="fin"></span>`;
+      row.onclick=()=>setSelection([p.id]); partsEl.appendChild(row);
+    });
+  });
+  const all=document.createElement('button'); all.className='btn'; all.style.cssText='width:100%;margin-top:12px';
+  all.textContent='全パーツを対象にする'; all.onclick=()=>setSelection(PARTS.map(p=>p.id)); partsEl.appendChild(all);
+}
+function refreshSwatches(){
+  document.querySelectorAll('#parts .row').forEach(row=>{
+    const id=row.dataset.id, s=state[id]||{};
+    row.querySelector('.sw>i').style.background=s.hex||'#888';
+    row.querySelector('.fin').textContent={silk:'シルク',metallic:'メタリック',clear:'透明',wood:'木目'}[s.finish]||'';
+    row.classList.toggle('sel', selection.includes(id));
+  });
+  const t=document.getElementById('tgtName');
+  if(selection.length===1) t.textContent=(PARTS.find(p=>p.id===selection[0])||{}).jp;
+  else if(selection.length===PARTS.length) t.textContent='全パーツ';
+  else t.textContent=`${selection.length}パーツ`;
+  if(selection.length){ const s=state[selection[0]]; if(s){ document.getElementById('freeColor').value=s.hex; document.getElementById('freeFinish').value=s.finish||'matte'; } }
+}
+function setSelection(ids){ selection=ids; refreshSwatches(); }
+function buildPalette(){
+  const area=document.getElementById('chipArea'); area.innerHTML='';
+  Object.entries(PRESETS).forEach(([cat,list])=>{
+    const h=document.createElement('div'); h.className='pcat'; h.textContent=cat; area.appendChild(h);
+    const wrap=document.createElement('div'); wrap.className='chips';
+    list.forEach(c=>{
+      const chip=document.createElement('div'); chip.className='chip'; chip.style.background=c.hex;
+      chip.title=`${c.n}${c.finish?'（'+c.finish+'）':''}`; if(c.finish) chip.dataset.fin=c.finish;
+      chip.onclick=()=>paint(c.hex,c.finish||'matte'); wrap.appendChild(chip);
+    });
+    area.appendChild(wrap);
+  });
+}
+function paint(hex,finish){ selection.forEach(id=>{ state[id]={hex,finish}; applyPart(id); }); refreshSwatches(); }
+document.getElementById('freeColor').oninput=(e)=>{ const fin=document.getElementById('freeFinish').value; selection.forEach(id=>{ state[id]={hex:e.target.value,finish:fin}; applyPart(id); }); refreshSwatches(); };
+document.getElementById('freeFinish').onchange=(e)=>{ const hex=document.getElementById('freeColor').value; selection.forEach(id=>{ state[id]={hex,finish:e.target.value}; applyPart(id); }); refreshSwatches(); };
+
+/* ---------- toolbar ---------- */
+document.getElementById('bg').onclick=()=>{ bgIdx=(bgIdx+1)%BG.length; setBackground(); };
+document.getElementById('spin').onclick=(e)=>{ controls.autoRotate=!controls.autoRotate; e.target.classList.toggle('on',controls.autoRotate); };
+document.getElementById('save').onclick=()=>{ localStorage.setItem('stackchan_scheme',JSON.stringify(state)); flash('保存しました'); };
+document.getElementById('load').onclick=()=>{ const j=localStorage.getItem('stackchan_scheme'); if(j){ state=Object.assign(structuredClone(DEFAULT_SCHEME),JSON.parse(j)); applyAll(); flash('読み込みました'); } else flash('保存データがありません'); };
+document.getElementById('reset').onclick=()=>{ state=structuredClone(DEFAULT_SCHEME); applyAll(); flash('リセットしました'); };
+document.getElementById('shot').onclick=()=>{ const wasAdj=adjustMode; const gv=gizmo.visible; gizmo.visible=false; camera.clearViewOffset(); renderer.render(scene,camera); const url=canvas.toDataURL('image/png'); gizmo.visible=gv; resize(); const a=document.createElement('a'); a.download='stackchan_'+Date.now()+'.png'; a.href=url; a.click(); };
+const schemeSel=document.getElementById('scheme');
+Object.keys(SCHEMES).forEach(k=>{ const o=document.createElement('option'); o.value=k; o.textContent=k; schemeSel.appendChild(o); });
+schemeSel.onchange=(e)=>{ const s=SCHEMES[e.target.value]; if(s){ state=Object.assign(structuredClone(DEFAULT_SCHEME),structuredClone(s)); applyAll(); } e.target.value=''; };
+function flash(msg){ const h=document.getElementById('hint'); const old=h.dataset.base||h.textContent; h.dataset.base=old; h.textContent=msg; setTimeout(()=>h.textContent=old,1600); }
+
+/* ---------- adjust mode ---------- */
+document.getElementById('adjust').onclick=()=>setAdjustMode(!adjustMode);
+function setAdjustMode(on){
+  adjustMode=on;
+  document.getElementById('adjust').classList.toggle('on',on);
+  document.getElementById('adjPanel').style.display=on?'block':'none';
+  document.getElementById('panel').style.display=on?'none':'flex';
+  if(on){ controls.autoRotate=false; document.getElementById('spin').classList.remove('on'); }
+  else { gizmo.detach(); gizmo.enabled=false; gizmo.visible=false; adjPart=null; adjSel=[]; if(anchor&&anchor.parent) anchor.parent.remove(anchor); }
+  resize();
+}
+document.querySelectorAll('.amode').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.amode').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+  gizmo.setMode(b.dataset.mode);
+});
+document.getElementById('snap').onchange=(e)=>{
+  if(e.target.checked){ gizmo.setTranslationSnap(0.001); gizmo.setRotationSnap(THREE.MathUtils.degToRad(15)); gizmo.setScaleSnap(0.05); }
+  else { gizmo.setTranslationSnap(null); gizmo.setRotationSnap(null); gizmo.setScaleSnap(null); }
+};
+
+/* ---------- undo / redo history (adjust ops) ---------- */
+let undoStack=[], redoStack=[], dragBefore=null;
+const takeSnap=(m)=>({m, p:m.position.clone(), q:m.quaternion.clone(), s:m.scale.clone()});
+const eqSnap=(a,b)=>a.p.equals(b.p)&&a.q.equals(b.q)&&a.s.equals(b.s);
+const setSnap=(s)=>{ s.m.position.copy(s.p); s.m.quaternion.copy(s.q); s.m.scale.copy(s.s); };
+function pushHistory(changes){
+  changes=changes.filter(c=>!eqSnap(c.before,c.after)); if(!changes.length) return;
+  undoStack.push(changes); if(undoStack.length>150) undoStack.shift(); redoStack.length=0; updateHist();
+}
+function afterHist(){ if(adjSel.length===1) syncAdjustInputs(); else if(adjSel.length>1) rebuildSelectionGizmo(); updateHist(); }
+function undo(){ const e=undoStack.pop(); if(!e) return; e.forEach(c=>setSnap(c.before)); redoStack.push(e); afterHist(); }
+function redo(){ const e=redoStack.pop(); if(!e) return; e.forEach(c=>setSnap(c.after)); undoStack.push(e); afterHist(); }
+function updateHist(){ const u=document.getElementById('aUndo'),r=document.getElementById('aRedo'); if(u)u.disabled=!undoStack.length; if(r)r.disabled=!redoStack.length; }
+document.getElementById('aUndo').onclick=undo;
+document.getElementById('aRedo').onclick=redo;
+gizmo.addEventListener('mouseDown',()=>{ dragBefore = adjSel.length ? adjSel.map(m=>takeSnap(m)) : null; });
+gizmo.addEventListener('mouseUp',()=>{ if(dragBefore){ pushHistory(dragBefore.map(b=>({before:b, after:takeSnap(b.m)}))); dragBefore=null; } });
+addEventListener('keydown',e=>{ if(!adjustMode) return;
+  if((e.ctrlKey||e.metaKey)&&(e.key==='z'||e.key==='Z')){ e.preventDefault(); e.shiftKey?redo():undo(); }
+  else if((e.ctrlKey||e.metaKey)&&(e.key==='y'||e.key==='Y')){ e.preventDefault(); redo(); }
+});
+function selectAdjust(mesh, additive){
+  if(additive){ const i=adjSel.indexOf(mesh); if(i>=0) adjSel.splice(i,1); else adjSel.push(mesh); }
+  else adjSel=[mesh];
+  rebuildSelectionGizmo();
+}
+function setNumEnabled(on){ numIds.forEach(id=>{ const el=document.getElementById(id); el.disabled=!on; if(!on) el.value=''; }); }
+function rebuildSelectionGizmo(){
+  if(anchor&&anchor.parent) anchor.parent.remove(anchor);
+  const lbl=document.getElementById('adjSel');
+  if(adjSel.length===0){ adjPart=null; gizmo.detach(); gizmo.visible=false; gizmo.enabled=false; setNumEnabled(false); lbl.textContent='パーツ未選択'; return; }
+  if(adjSel.length===1){ adjPart=adjSel[0]; gizmo.attach(adjPart); gizmo.visible=true; gizmo.enabled=true; setNumEnabled(true); lbl.textContent=ADJ_LABEL[normName(adjPart.name)]||adjPart.name; syncAdjustInputs(); return; }
+  // multiple: drive all parts via a shared anchor at their centroid
+  adjPart=null; setNumEnabled(false); lbl.textContent='複数選択中: '+adjSel.length+'個';
+  if(!anchor){ anchor=new THREE.Object3D(); anchor.name='__anchor'; }
+  const c=new THREE.Vector3(), w=new THREE.Vector3();
+  adjSel.forEach(m=>{ m.getWorldPosition(w); c.add(w); }); c.divideScalar(adjSel.length);
+  modelRoot.add(anchor); modelRoot.worldToLocal(c); anchor.position.copy(c); anchor.quaternion.identity(); anchor.scale.set(1,1,1);
+  anchor.updateMatrixWorld(true); anchorPrevW.copy(anchor.matrixWorld);
+  gizmo.attach(anchor); gizmo.visible=true; gizmo.enabled=true;
+}
+const numIds=['px','py','pz','rx','ry','rz','sx','sy','sz'];
+function syncAdjustInputs(){
+  if(!adjPart) return; const o=adjPart;
+  const g=id=>document.getElementById(id);
+  g('px').value=(o.position.x*1000).toFixed(1); g('py').value=(o.position.y*1000).toFixed(1); g('pz').value=(o.position.z*1000).toFixed(1);
+  g('rx').value=THREE.MathUtils.radToDeg(o.rotation.x).toFixed(1); g('ry').value=THREE.MathUtils.radToDeg(o.rotation.y).toFixed(1); g('rz').value=THREE.MathUtils.radToDeg(o.rotation.z).toFixed(1);
+  g('sx').value=o.scale.x.toFixed(3); g('sy').value=o.scale.y.toFixed(3); g('sz').value=o.scale.z.toFixed(3);
+}
+function applyAdjustInputs(){
+  if(!adjPart) return; const o=adjPart; const before=takeSnap(o); const v=id=>parseFloat(document.getElementById(id).value)||0;
+  o.position.set(v('px')/1000, v('py')/1000, v('pz')/1000);
+  o.rotation.set(THREE.MathUtils.degToRad(v('rx')), THREE.MathUtils.degToRad(v('ry')), THREE.MathUtils.degToRad(v('rz')));
+  o.scale.set(v('sx')||1, v('sy')||1, v('sz')||1);
+  pushHistory([{before, after:takeSnap(o)}]);
+}
+numIds.forEach(id=>document.getElementById(id).addEventListener('change',applyAdjustInputs));
+document.getElementById('aReset').onclick=()=>{ if(!adjSel.length) return; const ch=[]; adjSel.forEach(m=>{ const o=m.userData.orig; if(o){ const before=takeSnap(m); m.position.copy(o.p); m.quaternion.copy(o.q); m.scale.copy(o.s); ch.push({before, after:takeSnap(m)}); } }); pushHistory(ch); if(adjSel.length===1) syncAdjustInputs(); else rebuildSelectionGizmo(); };
+document.getElementById('aResetAll').onclick=()=>{ const ch=[]; allMeshes.forEach(m=>{ const o=m.userData.orig; if(o){ const before=takeSnap(m); m.position.copy(o.p); m.quaternion.copy(o.q); m.scale.copy(o.s); ch.push({before, after:takeSnap(m)}); } }); pushHistory(ch); syncAdjustInputs(); flash('すべて初期配置に戻しました'); };
+document.getElementById('aCopy').onclick=()=>{
+  const data={}; allMeshes.forEach(m=>{ const n=normName(m.name); data[n]={pos_mm:[+(m.position.x*1000).toFixed(2),+(m.position.y*1000).toFixed(2),+(m.position.z*1000).toFixed(2)], rot_deg:[+THREE.MathUtils.radToDeg(m.rotation.x).toFixed(2),+THREE.MathUtils.radToDeg(m.rotation.y).toFixed(2),+THREE.MathUtils.radToDeg(m.rotation.z).toFixed(2)], scale:[+m.scale.x.toFixed(3),+m.scale.y.toFixed(3),+m.scale.z.toFixed(3)]}; });
+  const txt=JSON.stringify(data,null,2);
+  navigator.clipboard?.writeText(txt).then(()=>flash('変換値をコピーしました'),()=>{ console.log(txt); flash('コンソールに出力しました'); });
+};
+document.getElementById('aSaveGlb').onclick=exportGLB;
+function exportGLB(){
+  if(!modelRoot) return;
+  const gv=gizmo.visible; gizmo.detach();
+  // CoreS3 is regenerated on load (geometry not baked), but bake its transform as a lightweight empty
+  // node so the user's adjusted position / scale persists as the initial state.
+  const cs=coreS3Group, csP=cs&&cs.parent; let xf=null;
+  if(cs&&csP){ xf=new THREE.Object3D(); xf.name='CoreS3_Xform';
+    xf.position.copy(cs.position); xf.quaternion.copy(cs.quaternion); xf.scale.copy(cs.scale);
+    csP.add(xf); csP.remove(cs); }
+  const an=anchor, anP=an&&an.parent; if(an&&anP) anP.remove(an);        // transient multi-select helper
+  const restore=()=>{ if(xf&&xf.parent) xf.parent.remove(xf); if(cs&&csP) csP.add(cs); if(an&&anP) anP.add(an); };
+  const swaps=[];
+  modelRoot.traverse(o=>{ if(o.isMesh){ swaps.push([o,o.material]); const mm=new THREE.MeshStandardMaterial({color:0xb6b9bf, roughness:0.6}); mm.name=normName(o.name); o.material=mm; }});
+  new GLTFExporter().parse(modelRoot,(result)=>{
+    swaps.forEach(([o,m])=>o.material=m); restore(); if(adjPart){ gizmo.attach(adjPart); gizmo.visible=gv; }
+    const blob=new Blob([result],{type:'model/gltf-binary'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='assembled.glb'; a.click();
+    flash('assembled.glb を保存しました');
+  },(err)=>{ swaps.forEach(([o,m])=>o.material=m); restore(); console.error(err); flash('保存に失敗しました'); }, {binary:true, onlyVisible:false});
+}
+
+/* ---------- selection by click ---------- */
+const ray=new THREE.Raycaster(); const ptr=new THREE.Vector2(); let down=null;
+const normName=(n)=>n.replace(/\.\d+$/,'');
+canvas.addEventListener('pointerdown',e=>down={x:e.clientX,y:e.clientY});
+canvas.addEventListener('pointerup',e=>{
+  if(!down) return; const moved=Math.hypot(e.clientX-down.x,e.clientY-down.y); down=null; if(moved>5) return;
+  if(adjustMode && gizmo.axis) return; // clicked a gizmo handle
+  const r=canvas.getBoundingClientRect(); ptr.x=((e.clientX-r.left)/r.width)*2-1; ptr.y=-((e.clientY-r.top)/r.height)*2+1;
+  ray.setFromCamera(ptr,camera);
+  const targets = adjustMode ? allMeshes : pickables;
+  const hits=ray.intersectObjects(targets,true);
+  const mod = e.shiftKey||e.ctrlKey||e.metaKey;
+  if(hits.length){
+    if(adjustMode){ const m=hits[0].object; selectAdjust(m.userData.adjustTarget||m, mod); }
+    else { const hit=hits.find(h=>h.object.userData.partId); if(hit) setSelection([hit.object.userData.partId]); }  // skip non-part hits (e.g. CoreS3 face overlay) so the case is selectable
+  }
+  else if(adjustMode && !mod){ adjSel=[]; rebuildSelectionGizmo(); }   // click empty space = clear selection
+});
+let pickables=[];
+
+/* draw the CoreS3 face (display + eyes/mouth + camera) on a clean plane at the head front */
+function addFace(head){
+  head.geometry.computeBoundingBox(); const bb=head.geometry.boundingBox;
+  const W=bb.max.x-bb.min.x, H=bb.max.y-bb.min.y, S=Math.min(W,H);
+  const cx=(bb.max.x+bb.min.x)/2, cy=(bb.max.y+bb.min.y)/2, frontZ=bb.max.z; // front faces +Z
+  const gw=S*0.86;
+  const face=new THREE.Mesh(new THREE.PlaneGeometry(gw,gw),
+    new THREE.MeshBasicMaterial({map:faceTex, transparent:true, toneMapped:false, depthWrite:false}));
+  face.position.set(cx,cy,frontZ+S*0.013); face.renderOrder=4; head.add(face);
+}
+
+/* ---------- load model ---------- */
+const GLB_URL = window.__GLB__ || ('./assembled.glb?t='+Date.now());   // cache-bust so edits show on reload
+const CORES3_URL = window.__CORES3GLB__ || ('./coreS3_face.glb?t='+Date.now());
+const faceTex = makeFaceTexture();
+// CoreS3 front = the official Stack-chan face photo (black glass cropped from the official image).
+// dev: fetch ./coreS3_face_tex.png ; standalone/offline: embedded as window.__FACETEX__. Falls back to the drawn face.
+const FACE_TEX_URL = window.__FACETEX__ || ('./coreS3_face_tex.png?t='+Date.now());
+const screenTex = new THREE.TextureLoader().load(FACE_TEX_URL,
+  t=>{ t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=8; t.needsUpdate=true; },
+  undefined,
+  e=>{ console.warn('face photo load failed; using drawn fallback', e); const f=makeScreenTexture(); screenTex.image=f.image; screenTex.colorSpace=THREE.SRGBColorSpace; screenTex.needsUpdate=true; });
+screenTex.colorSpace=THREE.SRGBColorSpace; screenTex.anisotropy=8;
+let coreS3Template=null;
+// load the CoreS3 face model first, then the assembled body (so buildCoreS3 can use the model)
+new GLTFLoader().load(CORES3_URL,(g)=>{ coreS3Template=g.scene; loadAssembled(); },
+  undefined, (e)=>{ console.warn('CoreS3 face model load failed; using fallback faceplate', e); loadAssembled(); });
+function loadAssembled(){
+new GLTFLoader().load(GLB_URL,(gltf)=>{
+  const root=gltf.scene; modelRoot=root;
+  const partIds=PARTS.map(p=>p.id);
+  let head=null; const toRemove=[];
+  root.traverse(o=>{
+    if(!o.isMesh) return;
+    o.castShadow=true; o.receiveShadow=true;
+    const name=normName(o.name);
+    if(name.startsWith('CoreS3')){ toRemove.push(o); return; }   // stripped; replaced by web-generated CoreS3
+    if(partIds.includes(name)){
+      const m=new THREE.MeshPhysicalMaterial({color:0xcccccc, roughness:0.6, metalness:0, clearcoatRoughness:0.2});
+      o.material=m; matMap[name]=m; o.userData.partId=name; pickables.push(o);
+      if(name==='MainBody') head=o;
+      // re-pivot mesh to its own geometry centre (visual unchanged) so the transform gizmo appears ON the part
+      o.geometry.computeBoundingBox();
+      const c=new THREE.Vector3(); o.geometry.boundingBox.getCenter(c);
+      o.geometry.translate(-c.x,-c.y,-c.z);
+      o.position.add(c.clone().multiply(o.scale).applyQuaternion(o.quaternion));
+      o.userData.orig={p:o.position.clone(),q:o.quaternion.clone(),s:o.scale.clone()}; allMeshes.push(o);
+    }
+  });
+  toRemove.forEach(o=>{ if(o.parent) o.parent.remove(o); });
+  if(head) buildCoreS3(head);
+  // if the GLB carries a saved CoreS3 transform, apply it as the initial position/scale of the device
+  const xf=root.getObjectByName('CoreS3_Xform');
+  if(xf && coreS3Group){
+    coreS3Group.position.copy(xf.position); coreS3Group.quaternion.copy(xf.quaternion); coreS3Group.scale.copy(xf.scale);
+    coreS3Group.userData.orig={p:coreS3Group.position.clone(), q:coreS3Group.quaternion.clone(), s:coreS3Group.scale.clone()};
+    if(xf.parent) xf.parent.remove(xf);
+  }
+  scene.add(root);
+
+  const box=new THREE.Box3().setFromObject(root);
+  const size=box.getSize(new THREE.Vector3()), center=box.getCenter(new THREE.Vector3());
+  ground.position.y=box.min.y; const radius=size.length()/2;
+  controls.target.copy(center);
+  const dist=radius/Math.sin((camera.fov*Math.PI/180)/2)*1.15;
+  camera.position.set(center.x+dist*0.05, center.y+radius*0.25, center.z+dist);
+  camera.near=radius/100; camera.far=radius*100; camera.updateProjectionMatrix();
+  const sc=key.shadow.camera, rr=radius*2.0; sc.left=-rr; sc.right=rr; sc.top=rr; sc.bottom=-rr; sc.near=0.001; sc.far=rr*6; sc.updateProjectionMatrix();
+  key.position.set(center.x+radius, center.y+radius*2.2, center.z+radius*1.4); key.target.position.copy(center); scene.add(key.target);
+
+  // seat the light-guide bars flush along the head's top edge (they were poking up at the corners)
+  if(head){
+    head.geometry.computeBoundingBox();
+    const topY=head.localToWorld(new THREE.Vector3(0,head.geometry.boundingBox.max.y,0)).y;
+    ['LightGuideBar-A','LightGuideBar-B'].forEach(nm=>{
+      const m=allMeshes.find(x=>normName(x.name)===nm); if(!m) return;
+      m.updateMatrixWorld(true);
+      const b=new THREE.Box3().setFromObject(m);
+      m.position.y += (topY + size.length()*0.004) - b.max.y;   // top of bar ~flush with head top
+      m.updateMatrixWorld(true);
+      if(m.userData.orig) m.userData.orig.p.copy(m.position);
+    });
+  }
+  applyAll(); document.getElementById('loading').style.display='none';
+},
+(xhr)=>{ if(xhr.total) document.getElementById('lmsg').textContent='読み込み中… '+Math.round(xhr.loaded/xhr.total*100)+'%'; },
+(err)=>{ console.error(err); document.getElementById('lmsg').textContent='モデルの読み込みに失敗しました';
+  document.getElementById('err').innerHTML='assembled.glb を読み込めませんでした。<br>ローカルサーバー経由（start.ps1）で開くか、単一ファイル版 <b>StackChan-ColorSim.html</b> をご利用ください。'; });
+}
+
+/* ---------- init & loop ---------- */
+buildParts(); buildPalette(); refreshSwatches();
+function resize(){ const w=innerWidth,h=innerHeight; renderer.setSize(w,h,false); camera.aspect=w/h;
+  if(adjustMode){ camera.clearViewOffset(); camera.updateProjectionMatrix(); }
+  else { const panelW=(w<=760?280:330); camera.setViewOffset(w,h,-panelW*0.5,0,w,h); } }
+addEventListener('resize',resize); resize();
+renderer.setAnimationLoop(()=>{ controls.update(); renderer.render(scene,camera); });
+</script>
+</body>
+</html>
