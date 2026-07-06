@@ -59,7 +59,10 @@
   #notice a{ color:var(--accent); }
   #palTarget{ font-size:11px; color:var(--sub); margin-bottom:8px; }
   #palTarget b{ color:var(--text); }
-  .pcat{ font-size:10px; color:var(--sub); margin:8px 0 4px; }
+  #chipArea{ max-height:38vh; overflow-y:auto; }
+  #recentRow{ margin-bottom:8px; }
+  #recentRow .pcat{ margin-top:0; }
+  .pcat{ font-size:10px; color:var(--sub); margin:8px 0 4px; position:sticky; top:0; z-index:1; background:var(--panel); padding:2px 0; }
   .chips{ display:flex; flex-wrap:wrap; gap:6px; }
   .chip{ width:28px; height:28px; border-radius:8px; cursor:pointer; border:1px solid rgba(255,255,255,.18); position:relative; transition:transform var(--ease), box-shadow var(--ease); }
   .chip:hover{ transform:scale(1.12); box-shadow:var(--shadow-1); }
@@ -112,6 +115,10 @@
   <div class="scroll" id="parts"></div>
   <div id="pal">
     <div id="palTarget">対象: <b id="tgtName">本体（顔まわり）</b></div>
+    <div id="recentRow" style="display:none">
+      <div class="pcat">最近使った色</div>
+      <div class="chips" id="recentChips"></div>
+    </div>
     <div id="chipArea"></div>
     <div class="pickrow">
       <label style="font-size:11px;color:var(--sub)">自由色</label>
@@ -226,18 +233,33 @@ const PRESETS = {
     {n:'レッド',hex:'#c0392b'},{n:'オレンジ',hex:'#e67e22'},{n:'イエロー',hex:'#f1c40f'},
     {n:'グリーン',hex:'#27ae60'},{n:'ミント',hex:'#74d1b6'},{n:'ブルー',hex:'#2980b9'},
     {n:'ネイビー',hex:'#2c3e50'},{n:'パープル',hex:'#8e44ad'},{n:'ピンク',hex:'#e84393'},
+    {n:'ベージュ',hex:'#d8c3a0'},{n:'ブラウン',hex:'#7a5233'},{n:'テラコッタ',hex:'#c2664a'},
+    {n:'サーモン',hex:'#f08a70'},{n:'コーラル',hex:'#ff6f61'},{n:'クリーム',hex:'#f7e8c1'},
+    {n:'ラベンダー',hex:'#b3a1e0'},{n:'ライム',hex:'#a4d84a'},{n:'オリーブ',hex:'#6b7a34'},
+    {n:'ティール',hex:'#1f8a83'},{n:'スカイブルー',hex:'#6ec3e8'},{n:'ロイヤルブルー',hex:'#1f4fa3'},
+    {n:'ワインレッド',hex:'#6e1f30'},
   ],
   'シルク / メタリック':[
     {n:'シルバー',hex:'#c8ccd0',finish:'metallic'},{n:'ゴールド',hex:'#d4af37',finish:'metallic'},
     {n:'カッパー',hex:'#b87333',finish:'metallic'},{n:'ガンメタル',hex:'#54585f',finish:'metallic'},
     {n:'シルク白',hex:'#f0f0f0',finish:'silk'},{n:'シルク青',hex:'#3aa0d8',finish:'silk'},
     {n:'シルク赤',hex:'#d0463b',finish:'silk'},{n:'シルク紫',hex:'#9b59b6',finish:'silk'},
+    {n:'シルク金',hex:'#e0b73f',finish:'silk'},{n:'シルク緑',hex:'#3fae6a',finish:'silk'},
+    {n:'シルクピンク',hex:'#f08fb0',finish:'silk'},{n:'シルク水色',hex:'#7fd6e8',finish:'silk'},
+    {n:'シルクオレンジ',hex:'#f0923a',finish:'silk'},{n:'ブロンズ',hex:'#8c6239',finish:'metallic'},
+    {n:'ローズゴールド',hex:'#e0a8a0',finish:'metallic'},{n:'チタングレー',hex:'#75787d',finish:'metallic'},
+    {n:'メタリックブルー',hex:'#2e5f9e',finish:'metallic'},{n:'メタリックレッド',hex:'#a3223e',finish:'metallic'},
   ],
   '透明 / クリア':[
     {n:'クリア',hex:'#eaf6ff',finish:'clear'},{n:'クリア青',hex:'#bfe9ff',finish:'clear'},
     {n:'クリア緑',hex:'#c8f7d4',finish:'clear'},{n:'クリア赤',hex:'#ffc9c9',finish:'clear'},{n:'クリア黄',hex:'#fff2bf',finish:'clear'},
+    {n:'クリア紫',hex:'#e3caf5',finish:'clear'},{n:'クリアオレンジ',hex:'#ffd9ad',finish:'clear'},
+    {n:'クリアピンク',hex:'#ffd3e6',finish:'clear'},{n:'クリアミント',hex:'#c6f5ea',finish:'clear'},
+    {n:'スモーク',hex:'#3a3d42',finish:'clear'},{n:'クリアグレー',hex:'#cfd3d8',finish:'clear'},
   ],
-  '木目':[ {n:'ウッド',hex:'#9c6b3f',finish:'wood'},{n:'ダークウッド',hex:'#6e4a2b',finish:'wood'} ],
+  '木目':[ {n:'ウッド',hex:'#9c6b3f',finish:'wood'},{n:'ダークウッド',hex:'#6e4a2b',finish:'wood'},
+    {n:'ライトウッド',hex:'#c9a06a',finish:'wood'},{n:'チェリー',hex:'#8a4a34',finish:'wood'},{n:'ウォールナット',hex:'#4f3524',finish:'wood'},
+  ],
 };
 const SCHEMES = {
   '純正風 (白×グレー)': DEFAULT_SCHEME,
@@ -517,14 +539,37 @@ function buildPalette(){
     list.forEach(c=>{
       const chip=document.createElement('div'); chip.className='chip'; chip.style.background=c.hex;
       chip.title=`${c.n}${c.finish?'（'+c.finish+'）':''}`; if(c.finish) chip.dataset.fin=c.finish;
-      chip.onclick=()=>paint(c.hex,c.finish||'matte'); wrap.appendChild(chip);
+      chip.onclick=()=>paint(c.hex,c.finish||'matte',c.n); wrap.appendChild(chip);
     });
     area.appendChild(wrap);
   });
 }
-function paint(hex,finish){ selection.forEach(id=>{ state[id]={hex,finish}; applyPart(id); }); refreshSwatches(); }
-document.getElementById('freeColor').oninput=(e)=>{ const fin=document.getElementById('freeFinish').value; selection.forEach(id=>{ state[id]={hex:e.target.value,finish:fin}; applyPart(id); }); refreshSwatches(); };
-document.getElementById('freeFinish').onchange=(e)=>{ const hex=document.getElementById('freeColor').value; selection.forEach(id=>{ state[id]={hex,finish:e.target.value}; applyPart(id); }); refreshSwatches(); };
+function paint(hex,finish,name){ selection.forEach(id=>{ state[id]={hex,finish}; applyPart(id); }); refreshSwatches(); recordRecentColor(hex,finish,name); }
+document.getElementById('freeColor').oninput=(e)=>{ const fin=document.getElementById('freeFinish').value; selection.forEach(id=>{ state[id]={hex:e.target.value,finish:fin}; applyPart(id); }); refreshSwatches(); recordRecentColor(e.target.value,fin); };
+document.getElementById('freeFinish').onchange=(e)=>{ const hex=document.getElementById('freeColor').value; selection.forEach(id=>{ state[id]={hex,finish:e.target.value}; applyPart(id); }); refreshSwatches(); recordRecentColor(hex,e.target.value); };
+
+/* ---------- 最近使った色 ---------- */
+const RECENT_KEY='stackchan_recent_colors', RECENT_MAX=10;
+let recentColors=[];
+try{ recentColors=JSON.parse(localStorage.getItem(RECENT_KEY)||'[]'); if(!Array.isArray(recentColors)) recentColors=[]; }catch(e){ recentColors=[]; }
+function recordRecentColor(hex,finish,name){
+  finish=finish||'matte';
+  recentColors=recentColors.filter(c=>!(c.hex===hex && c.finish===finish));
+  recentColors.unshift({hex,finish,name:name||''});
+  if(recentColors.length>RECENT_MAX) recentColors.length=RECENT_MAX;
+  try{ localStorage.setItem(RECENT_KEY, JSON.stringify(recentColors)); }catch(e){}
+  renderRecentColors();
+}
+function renderRecentColors(){
+  const row=document.getElementById('recentRow'), wrap=document.getElementById('recentChips');
+  if(!recentColors.length){ row.style.display='none'; return; }
+  row.style.display='block'; wrap.innerHTML='';
+  recentColors.forEach(c=>{
+    const chip=document.createElement('div'); chip.className='chip'; chip.style.background=c.hex;
+    chip.title=c.name?`${c.name}${c.finish?'（'+c.finish+'）':''}`:c.hex; if(c.finish) chip.dataset.fin=c.finish;
+    chip.onclick=()=>paint(c.hex,c.finish||'matte',c.name); wrap.appendChild(chip);
+  });
+}
 
 /* ---------- toolbar ---------- */
 document.getElementById('bg').onclick=()=>{ bgIdx=(bgIdx+1)%BG.length; setBackground(); };
@@ -755,7 +800,7 @@ new GLTFLoader().load(GLB_URL,(gltf)=>{
 }
 
 /* ---------- init & loop ---------- */
-buildParts(); buildPalette(); refreshSwatches();
+buildParts(); buildPalette(); refreshSwatches(); renderRecentColors();
 function resize(){ const w=innerWidth,h=innerHeight; renderer.setSize(w,h,false); camera.aspect=w/h;
   if(adjustMode){ camera.clearViewOffset(); camera.updateProjectionMatrix(); }
   else { const panelW=(w<=760?280:330); camera.setViewOffset(w,h,-panelW*0.5,0,w,h); } }
