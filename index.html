@@ -32,7 +32,7 @@
   #panel header{ padding:14px 16px 10px; border-bottom:1px solid var(--line); }
   #panel header h1{ font-size:15px; margin:0 0 2px; letter-spacing:.02em; font-weight:600; }
   #panel header p{ font-size:11px; color:var(--sub); margin:0; }
-  .scroll{ overflow-y:auto; flex:1; padding:10px 12px 14px; }
+  .scroll{ overflow-y:auto; flex:1; min-height:230px; padding:10px 12px 14px; }
   .grp{ margin:12px 0 4px; font-size:11px; font-weight:600; color:var(--sub); display:flex; align-items:center; gap:8px;
         position:sticky; top:0; z-index:1; background:var(--panel); padding:6px 4px; border-radius:var(--radius-sm); cursor:pointer;
         transition:background var(--ease); }
@@ -52,14 +52,14 @@
   .sw>i{ display:block; width:100%; height:100%; border-radius:7px; }
   .nm{ font-size:12.5px; flex:1; }
   .fin{ font-size:10px; color:var(--sub); }
-  #pal{ border-top:1px solid var(--line); padding:10px 12px 12px; background:var(--panel); }
-  #notice{ border-top:1px solid var(--line); padding:10px 12px 12px; background:var(--panel); font-size:10.5px; color:var(--sub); line-height:1.6; }
+  #pal{ border-top:1px solid var(--line); padding:8px 12px 9px; background:var(--panel); }
+  #notice{ border-top:1px solid var(--line); padding:7px 12px 8px; background:var(--panel); font-size:10.5px; color:var(--sub); line-height:1.5; }
   #notice p{ margin:0 0 5px; }
   #notice b{ color:#e8b96b; }
   #notice a{ color:var(--accent); }
   #palTarget{ font-size:11px; color:var(--sub); margin-bottom:8px; }
   #palTarget b{ color:var(--text); }
-  #chipArea{ max-height:38vh; overflow-y:auto; }
+  #chipArea{ max-height:20vh; overflow-y:auto; }
   #recentRow{ margin-bottom:8px; }
   #recentRow .pcat{ margin-top:0; }
   .pcat{ font-size:10px; color:var(--sub); margin:8px 0 4px; position:sticky; top:0; z-index:1; background:var(--panel); padding:2px 0; }
@@ -96,6 +96,28 @@
   @keyframes sp{to{transform:rotate(360deg)}}
   #err{ max-width:520px; text-align:center; color:#ff9a9a; font-size:12px; line-height:1.6; }
   @media (max-width:760px){ #panel{ width:280px; } #bar{ max-width:calc(100% - 300px);} #hint{left:292px} }
+  /* toast */
+  #toast{ position:fixed; left:50%; bottom:28px; transform:translate(-50%,10px); z-index:60;
+          background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:var(--radius);
+          padding:9px 16px; font-size:12.5px; box-shadow:var(--shadow-2); opacity:0; pointer-events:none;
+          transition:opacity var(--ease), transform var(--ease); max-width:80vw; text-align:center; }
+  #toast.show{ opacity:1; transform:translate(-50%,0); }
+  /* recipe modal */
+  #modalOverlay{ position:fixed; inset:0; background:rgba(8,9,12,.55); z-index:70; display:none;
+                 align-items:center; justify-content:center; }
+  #modalOverlay.show{ display:flex; }
+  #recipeModal{ width:min(560px,92vw); max-height:82vh; background:var(--panel); border:1px solid var(--line);
+                border-radius:var(--radius); box-shadow:var(--shadow-2); display:flex; flex-direction:column; overflow:hidden; }
+  #recipeModal header{ display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid var(--line); }
+  #recipeModal header h2{ font-size:14px; margin:0; font-weight:600; }
+  #recipeClose{ background:transparent; border:none; color:var(--sub); font-size:16px; cursor:pointer; line-height:1; padding:2px 6px; border-radius:var(--radius-sm); transition:background var(--ease), color var(--ease); }
+  #recipeClose:hover{ background:var(--hover); color:var(--text); }
+  #recipeBody{ overflow-y:auto; padding:12px 14px; }
+  #recipeTable{ width:100%; border-collapse:collapse; font-size:12px; }
+  #recipeTable th,#recipeTable td{ text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); }
+  #recipeTable th{ color:var(--sub); font-weight:600; font-size:11px; }
+  #recipeTable .rsw{ display:inline-block; width:14px; height:14px; border-radius:4px; border:1px solid rgba(255,255,255,.25); vertical-align:-2px; margin-right:6px; }
+  #recipeFooter{ padding:10px 14px; border-top:1px solid var(--line); display:flex; justify-content:flex-end; }
 </style>
 <script type="importmap">
 { "imports": {
@@ -145,6 +167,7 @@
     <select id="scheme" class="btn" title="作例スキーム">
       <option value="">作例スキーム…</option>
     </select>
+    <button class="btn" id="random" title="ランダム配色">🎲</button>
   </div>
   <div class="bargrp">
     <button class="btn" id="bg" title="背景を切り替え">🖼️ 背景</button>
@@ -154,6 +177,8 @@
     <button class="btn" id="save" title="配色をブラウザに保存">💾 保存</button>
     <button class="btn" id="load" title="保存した配色を読込">📂 読込</button>
     <button class="btn" id="shot" title="現在の見た目を画像として保存">📷 画像保存</button>
+    <button class="btn" id="share" title="現在の配色を共有URLとしてコピー">🔗 共有</button>
+    <button class="btn" id="recipe" title="配色レシピを表示">📋 レシピ</button>
   </div>
   <div class="bar-sep"></div>
   <div class="bargrp">
@@ -191,6 +216,26 @@
 
 <div id="hint">ドラッグ=回転 / ホイール=ズーム / 右ドラッグ=移動 ・ パーツをクリックでも選択できます</div>
 <div id="loading"><div class="spin"></div><div id="lmsg">モデルを読み込み中…</div><div id="err"></div></div>
+
+<div id="toast"></div>
+
+<div id="modalOverlay">
+  <div id="recipeModal" role="dialog" aria-modal="true" aria-labelledby="recipeTitle">
+    <header>
+      <h2 id="recipeTitle">📋 配色レシピ</h2>
+      <button id="recipeClose" title="閉じる" aria-label="閉じる">✕</button>
+    </header>
+    <div id="recipeBody">
+      <table id="recipeTable">
+        <thead><tr><th>パーツ</th><th>色名</th><th>HEX</th><th>質感</th></tr></thead>
+        <tbody id="recipeTbody"></tbody>
+      </table>
+    </div>
+    <div id="recipeFooter">
+      <button class="btn" id="recipeCopy">📋 テキストをコピー</button>
+    </div>
+  </div>
+</div>
 
 <script type="module">
 import * as THREE from 'three';
@@ -571,12 +616,24 @@ function renderRecentColors(){
   });
 }
 
+/* ---------- toast (画面下部中央の小さな通知) ---------- */
+let toastTimer=null;
+function toast(msg){
+  const el=document.getElementById('toast');
+  clearTimeout(toastTimer);
+  el.textContent=msg;
+  // 一旦 show を外して強制リフローすることで、連続呼び出し時もフェードをやり直す
+  el.classList.remove('show'); void el.offsetWidth;
+  el.classList.add('show');
+  toastTimer=setTimeout(()=>{ el.classList.remove('show'); }, 2000);
+}
+
 /* ---------- toolbar ---------- */
 document.getElementById('bg').onclick=()=>{ bgIdx=(bgIdx+1)%BG.length; setBackground(); };
 document.getElementById('spin').onclick=(e)=>{ controls.autoRotate=!controls.autoRotate; e.target.classList.toggle('on',controls.autoRotate); };
-document.getElementById('save').onclick=()=>{ localStorage.setItem('stackchan_scheme',JSON.stringify(state)); flash('保存しました'); };
-document.getElementById('load').onclick=()=>{ const j=localStorage.getItem('stackchan_scheme'); if(j){ state=Object.assign(structuredClone(DEFAULT_SCHEME),JSON.parse(j)); applyAll(); flash('読み込みました'); } else flash('保存データがありません'); };
-document.getElementById('reset').onclick=()=>{ state=structuredClone(DEFAULT_SCHEME); applyAll(); flash('リセットしました'); };
+document.getElementById('save').onclick=()=>{ localStorage.setItem('stackchan_scheme',JSON.stringify(state)); flash('保存しました'); toast('保存しました'); };
+document.getElementById('load').onclick=()=>{ const j=localStorage.getItem('stackchan_scheme'); if(j){ state=Object.assign(structuredClone(DEFAULT_SCHEME),JSON.parse(j)); applyAll(); flash('読み込みました'); toast('読み込みました'); } else { flash('保存データがありません'); toast('保存データがありません'); } };
+document.getElementById('reset').onclick=()=>{ state=structuredClone(DEFAULT_SCHEME); applyAll(); flash('リセットしました'); toast('リセットしました'); };
 document.getElementById('shot').onclick=()=>{ const wasAdj=adjustMode; const gv=gizmo.visible; gizmo.visible=false; camera.clearViewOffset(); renderer.render(scene,camera); const url=canvas.toDataURL('image/png'); gizmo.visible=gv; resize(); const a=document.createElement('a'); a.download='stackchan_'+Date.now()+'.png'; a.href=url; a.click(); };
 const schemeSel=document.getElementById('scheme');
 Object.keys(SCHEMES).forEach(k=>{ const o=document.createElement('option'); o.value=k; o.textContent=k; schemeSel.appendChild(o); });
@@ -793,11 +850,170 @@ new GLTFLoader().load(GLB_URL,(gltf)=>{
     });
   }
   applyAll(); document.getElementById('loading').style.display='none';
+  applySharedStateFromHash();   // 3Dモデル読込完了後に共有URL(#c=...)があれば配色へ反映
 },
 (xhr)=>{ if(xhr.total) document.getElementById('lmsg').textContent='読み込み中… '+Math.round(xhr.loaded/xhr.total*100)+'%'; },
 (err)=>{ console.error(err); document.getElementById('lmsg').textContent='モデルの読み込みに失敗しました';
   document.getElementById('err').innerHTML='assembled.glb を読み込めませんでした。<br>ローカルサーバー経由（start.ps1）で開くか、単一ファイル版 <b>StackChan-ColorSim.html</b> をご利用ください。'; });
 }
+
+/* ---------- クリップボードコピー（失敗時フォールバック） ---------- */
+function copyToClipboard(text){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    return navigator.clipboard.writeText(text).catch(()=>copyToClipboardFallback(text));
+  }
+  return copyToClipboardFallback(text);
+}
+function copyToClipboardFallback(text){
+  return new Promise((resolve,reject)=>{
+    try{
+      const ta=document.createElement('textarea');
+      ta.value=text; ta.style.position='fixed'; ta.style.opacity='0'; ta.style.left='-9999px';
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      const ok=document.execCommand('copy');
+      document.body.removeChild(ta);
+      ok?resolve():reject(new Error('execCommand copy failed'));
+    }catch(e){ reject(e); }
+  });
+}
+
+/* ---------- 共有URL ---------- */
+// UTF-8安全な base64url エンコード/デコード
+function b64urlEncode(str){
+  const bytes=new TextEncoder().encode(str);
+  let bin=''; bytes.forEach(b=>bin+=String.fromCharCode(b));
+  return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function b64urlDecode(b64url){
+  let b64=b64url.replace(/-/g,'+').replace(/_/g,'/');
+  while(b64.length%4) b64+='=';
+  const bin=atob(b64);
+  const bytes=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+function buildShareUrl(){
+  const payload={ state, bgIdx };
+  const json=JSON.stringify(payload);
+  const encoded=b64urlEncode(json);
+  const url=new URL(location.href);
+  url.hash='c='+encoded;
+  return url.toString();
+}
+document.getElementById('share').onclick=()=>{
+  const url=buildShareUrl();
+  copyToClipboard(url).then(()=>{ toast('共有URLをコピーしました'); flash('共有URLをコピーしました'); })
+    .catch((e)=>{ console.warn('clipboard copy failed', e); toast('コピーに失敗しました'); });
+};
+function applySharedStateFromHash(){
+  const h=location.hash;
+  if(!h || h.indexOf('c=')<0) return;
+  try{
+    const m=/(?:^#|[#&])c=([^&]+)/.exec(h);
+    if(!m) return;
+    const json=b64urlDecode(m[1]);
+    const payload=JSON.parse(json);
+    if(!payload || typeof payload!=='object') throw new Error('invalid payload');
+    const shared=payload.state||payload; // 将来の形式変化にもある程度耐性を持たせる
+    if(shared && typeof shared==='object'){
+      state=Object.assign(structuredClone(DEFAULT_SCHEME), structuredClone(shared));
+      applyAll();
+    }
+    if(typeof payload.bgIdx==='number' && BG[payload.bgIdx]){
+      bgIdx=payload.bgIdx; setBackground();
+    }
+    toast('共有された配色を読み込みました');
+  }catch(e){
+    console.warn('共有URLの読み込みに失敗しました（破損したhashのため通常起動します）', e);
+  }
+}
+
+/* ---------- 配色レシピ ---------- */
+function findPresetMatch(hex, finish){
+  finish=finish||'matte';
+  for(const list of Object.values(PRESETS)){
+    for(const c of list){
+      if(c.hex.toLowerCase()===String(hex).toLowerCase() && (c.finish||'matte')===finish) return c;
+    }
+  }
+  return null;
+}
+const FIN_LABEL={matte:'マット',silk:'シルク',metallic:'メタリック',clear:'透明',wood:'木目'};
+function buildRecipeRows(){
+  // 同色同質感のパーツをまとめる
+  const byKey=new Map();
+  PARTS.forEach(p=>{
+    const s=state[p.id]||{hex:'#cccccc',finish:'matte'};
+    const finish=s.finish||'matte';
+    const key=s.hex.toLowerCase()+'|'+finish;
+    if(!byKey.has(key)) byKey.set(key,{hex:s.hex,finish,parts:[]});
+    byKey.get(key).parts.push(p.jp);
+  });
+  return Array.from(byKey.values()).map(g=>{
+    const preset=findPresetMatch(g.hex,g.finish);
+    return { partsLabel:g.parts.join('・'), name:preset?preset.n:'自由色', hex:g.hex, finLabel:FIN_LABEL[g.finish]||g.finish };
+  });
+}
+function renderRecipe(){
+  const rows=buildRecipeRows();
+  const tbody=document.getElementById('recipeTbody');
+  tbody.innerHTML='';
+  rows.forEach(r=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${r.partsLabel}</td><td>${r.name}</td><td><span class="rsw" style="background:${r.hex}"></span>${r.hex}</td><td>${r.finLabel}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+function recipeToText(){
+  const rows=buildRecipeRows();
+  const lines=['配色レシピ（Stack-chan 配色シミュレーター）',''];
+  rows.forEach(r=>{ lines.push(`${r.partsLabel}: ${r.name} ${r.hex} ${r.finLabel}`); });
+  return lines.join('\n');
+}
+function openRecipeModal(){ renderRecipe(); document.getElementById('modalOverlay').classList.add('show'); }
+function closeRecipeModal(){ document.getElementById('modalOverlay').classList.remove('show'); }
+document.getElementById('recipe').onclick=openRecipeModal;
+document.getElementById('recipeClose').onclick=closeRecipeModal;
+document.getElementById('modalOverlay').addEventListener('click',(e)=>{ if(e.target.id==='modalOverlay') closeRecipeModal(); });
+addEventListener('keydown',(e)=>{ if(e.key==='Escape' && document.getElementById('modalOverlay').classList.contains('show')) closeRecipeModal(); });
+document.getElementById('recipeCopy').onclick=()=>{
+  copyToClipboard(recipeToText()).then(()=>toast('レシピをコピーしました'))
+    .catch((e)=>{ console.warn('clipboard copy failed', e); toast('コピーに失敗しました'); });
+};
+
+/* ---------- ランダム配色 ---------- */
+const CLEAR_PRESETS = PRESETS['透明 / クリア'];
+function pickRandom(list){ return list[Math.floor(Math.random()*list.length)]; }
+// 既存の作例スキームに合わせ、同色にまとめるパーツのグループ
+const RANDOM_LINK_GROUPS = [
+  ['ServoBody','ServoCover','ServoSideCover'],
+  ['ServoArm','BearingFixture'],
+  ['Base','BaseCover'],
+];
+document.getElementById('random').onclick=()=>{
+  const allPresets=Object.values(PRESETS).flat();
+  const assigned={};
+  // 導光棒は「透明 / クリア」カテゴリから選び、A/Bは同色にする
+  const clearPick=pickRandom(CLEAR_PRESETS);
+  assigned['LightGuideBar-A']={hex:clearPick.hex,finish:clearPick.finish||'clear'};
+  assigned['LightGuideBar-B']={hex:clearPick.hex,finish:clearPick.finish||'clear'};
+  // 同色でまとめるペアパーツ
+  RANDOM_LINK_GROUPS.forEach(group=>{
+    const c=pickRandom(allPresets);
+    const v={hex:c.hex,finish:c.finish||'matte'};
+    group.forEach(id=>assigned[id]=v);
+  });
+  // 残りのパーツは個別にランダム
+  PARTS.forEach(p=>{
+    if(assigned[p.id]) return;
+    const c=pickRandom(allPresets);
+    assigned[p.id]={hex:c.hex,finish:c.finish||'matte'};
+  });
+  // 適用（既存フロー: state更新→applyPart→refreshSwatches。最近使った色には記録しない）
+  PARTS.forEach(p=>{ state[p.id]=assigned[p.id]; applyPart(p.id); });
+  refreshSwatches();
+  toast('ランダム配色を適用しました');
+};
 
 /* ---------- init & loop ---------- */
 buildParts(); buildPalette(); refreshSwatches(); renderRecentColors();
