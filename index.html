@@ -16,52 +16,69 @@
 <meta name="twitter:description" content="M5Stack K151 / CoreS3 の3Dプリント配色を、ブラウザで試せる非公式ツール。">
 <meta name="twitter:image" content="https://kaburimen3.github.io/stackchan-color-simulator/ogp.png">
 <style>
-  :root{ --panel:#1c1f26; --panel2:#262a33; --line:#363b46; --text:#e6e8ec; --sub:#9aa0ab; --accent:#4ea1ff; }
+  :root{
+    --panel:#1c1f26; --panel2:#262a33; --line:#363b46; --text:#e6e8ec; --sub:#9aa0ab; --accent:#4ea1ff;
+    --radius:10px; --radius-sm:6px; --danger:#ff6b6b; --danger-bg:#3a2226; --danger-border:#5c2f34;
+    --hover:#2f3542; --shadow-1:0 2px 8px rgba(0,0,0,.25); --shadow-2:0 8px 28px rgba(0,0,0,.45);
+    --ease:.15s ease;
+  }
   *{ box-sizing:border-box; }
-  html,body{ margin:0; height:100%; overflow:hidden; font-family:"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic UI",system-ui,sans-serif; color:var(--text); background:#11131a; }
+  html,body{ margin:0; height:100%; overflow:hidden; font-family:"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic UI",system-ui,sans-serif; color:var(--text); background:#11131a; font-size:13px; line-height:1.5; }
   #app{ position:fixed; inset:0; }
   #c{ width:100%; height:100%; display:block; }
+  :focus-visible{ outline:2px solid var(--accent); outline-offset:2px; border-radius:4px; }
   #panel{ position:fixed; top:0; left:0; height:100%; width:330px; background:var(--panel); border-right:1px solid var(--line);
           display:flex; flex-direction:column; z-index:10; box-shadow:2px 0 16px rgba(0,0,0,.35); }
   #panel header{ padding:14px 16px 10px; border-bottom:1px solid var(--line); }
-  #panel header h1{ font-size:15px; margin:0 0 2px; letter-spacing:.02em; }
+  #panel header h1{ font-size:15px; margin:0 0 2px; letter-spacing:.02em; font-weight:600; }
   #panel header p{ font-size:11px; color:var(--sub); margin:0; }
   .scroll{ overflow-y:auto; flex:1; padding:10px 12px 14px; }
-  .grp{ margin:10px 0 4px; font-size:11px; color:var(--sub); display:flex; align-items:center; gap:8px; }
-  .grp .gbtn{ font-size:10px; color:var(--accent); cursor:pointer; border:1px solid var(--line); border-radius:5px; padding:1px 6px; background:transparent; }
-  .grp .gbtn:hover{ background:var(--panel2); }
-  .row{ display:flex; align-items:center; gap:10px; padding:7px 8px; border-radius:8px; cursor:pointer; }
+  .grp{ margin:12px 0 4px; font-size:11px; font-weight:600; color:var(--sub); display:flex; align-items:center; gap:8px;
+        position:sticky; top:0; z-index:1; background:var(--panel); padding:6px 4px; border-radius:var(--radius-sm); cursor:pointer;
+        transition:background var(--ease); }
+  .grp:hover{ background:var(--panel2); }
+  .grp::before{ content:"▾"; display:inline-block; font-size:9px; color:var(--accent); transition:transform var(--ease); transform-origin:50% 50%; }
+  .grp.collapsed::before{ transform:rotate(-90deg); }
+  .grp .gbtn{ font-size:10px; color:var(--accent); cursor:pointer; border:1px solid var(--line); border-radius:5px; padding:1px 6px; background:transparent; transition:background var(--ease), border-color var(--ease); }
+  .grp .gbtn:hover{ background:var(--hover); border-color:var(--accent); }
+  .row{ display:flex; align-items:center; gap:10px; padding:8px; border-radius:var(--radius-sm); cursor:pointer;
+        border-left:3px solid transparent; transition:background var(--ease), border-color var(--ease); }
   .row:hover{ background:var(--panel2); }
-  .row.sel{ background:#2b3550; outline:1px solid var(--accent); }
-  .sw{ width:22px; height:22px; border-radius:6px; border:1px solid rgba(255,255,255,.25); flex:0 0 auto;
+  .row.sel{ background:#2b3550; border-left-color:var(--accent); }
+  .row.grp-collapsed-row{ display:none; }
+  .sw{ width:27px; height:27px; border-radius:8px; border:1px solid rgba(255,255,255,.25); flex:0 0 auto;
        background-image:linear-gradient(45deg,#888 25%,transparent 25%),linear-gradient(-45deg,#888 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#888 75%),linear-gradient(-45deg,transparent 75%,#888 75%);
        background-size:8px 8px; background-position:0 0,0 4px,4px -4px,-4px 0; }
-  .sw>i{ display:block; width:100%; height:100%; border-radius:5px; }
+  .sw>i{ display:block; width:100%; height:100%; border-radius:7px; }
   .nm{ font-size:12.5px; flex:1; }
   .fin{ font-size:10px; color:var(--sub); }
   #pal{ border-top:1px solid var(--line); padding:10px 12px 12px; background:var(--panel); }
-  #notice{ border-top:1px solid var(--line); padding:8px 12px 10px; background:var(--panel); font-size:10px; color:var(--sub); line-height:1.5; }
-  #notice p{ margin:0 0 4px; }
+  #notice{ border-top:1px solid var(--line); padding:10px 12px 12px; background:var(--panel); font-size:10.5px; color:var(--sub); line-height:1.6; }
+  #notice p{ margin:0 0 5px; }
   #notice b{ color:#e8b96b; }
   #notice a{ color:var(--accent); }
   #palTarget{ font-size:11px; color:var(--sub); margin-bottom:8px; }
   #palTarget b{ color:var(--text); }
   .pcat{ font-size:10px; color:var(--sub); margin:8px 0 4px; }
   .chips{ display:flex; flex-wrap:wrap; gap:6px; }
-  .chip{ width:26px; height:26px; border-radius:7px; cursor:pointer; border:1px solid rgba(255,255,255,.18); position:relative; }
-  .chip:hover{ transform:scale(1.08); }
+  .chip{ width:28px; height:28px; border-radius:8px; cursor:pointer; border:1px solid rgba(255,255,255,.18); position:relative; transition:transform var(--ease), box-shadow var(--ease); }
+  .chip:hover{ transform:scale(1.12); box-shadow:var(--shadow-1); }
   .chip[data-fin="metallic"]::after,.chip[data-fin="silk"]::after{ content:""; position:absolute; inset:0; border-radius:6px; background:linear-gradient(135deg,rgba(255,255,255,.55),transparent 55%); }
   .chip[data-fin="clear"]{ opacity:.7; box-shadow:inset 0 0 0 2px rgba(255,255,255,.35); }
   .pickrow{ display:flex; align-items:center; gap:8px; margin-top:10px; }
   .pickrow input[type=color]{ width:34px; height:30px; border:none; background:none; cursor:pointer; padding:0; }
-  select,.btn{ background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:7px; padding:5px 8px; font-size:12px; cursor:pointer; }
-  .btn:hover{ border-color:var(--accent); }
+  select,.btn{ background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:var(--radius-sm); padding:6px 10px; font-size:12px; cursor:pointer; transition:background var(--ease), border-color var(--ease), color var(--ease); }
+  .btn:hover{ border-color:var(--accent); background:var(--hover); }
   .btn.on{ border-color:var(--accent); color:#fff; background:#2b3550; }
-  #bar{ position:fixed; top:10px; right:12px; display:flex; gap:8px; z-index:11; flex-wrap:wrap; justify-content:flex-end; max-width:calc(100% - 360px); }
+  #bar{ position:fixed; top:10px; right:12px; display:flex; gap:10px; z-index:11; flex-wrap:wrap; justify-content:flex-end; max-width:calc(100% - 360px); align-items:center; }
+  .bargrp{ display:flex; gap:8px; align-items:center; padding:4px; border-radius:var(--radius); background:rgba(38,42,51,.55); box-shadow:var(--shadow-1); }
+  .bar-sep{ width:1px; align-self:stretch; background:var(--line); margin:2px 2px; }
+  #reset{ color:var(--danger); border-color:var(--danger-border); background:var(--danger-bg); }
+  #reset:hover{ border-color:var(--danger); background:#472a2f; }
   #hint{ position:fixed; bottom:10px; left:342px; font-size:11px; color:var(--sub); z-index:9; background:rgba(0,0,0,.25); padding:4px 8px; border-radius:6px;}
   /* adjust panel */
-  #adjPanel{ position:fixed; top:54px; right:12px; width:300px; background:var(--panel); border:1px solid var(--line); border-radius:10px;
-             padding:12px; z-index:12; display:none; box-shadow:0 8px 28px rgba(0,0,0,.45); }
+  #adjPanel{ position:fixed; top:54px; right:12px; width:300px; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+             padding:12px; z-index:12; display:none; box-shadow:var(--shadow-2); }
   #adjPanel h2{ font-size:13px; margin:0 0 8px; display:flex; justify-content:space-between; align-items:center; }
   #adjSel{ font-size:11px; color:var(--accent); }
   .arow{ display:flex; gap:6px; align-items:center; margin:8px 0; flex-wrap:wrap; }
@@ -69,7 +86,7 @@
   .amode.on{ background:var(--accent); color:#06121f; border-color:var(--accent); }
   .nums{ display:grid; grid-template-columns:auto repeat(3,1fr); gap:5px 6px; align-items:center; margin:8px 0; }
   .nums span{ font-size:11px; color:var(--sub); }
-  .nums input{ width:100%; background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:5px; padding:3px 4px; font-size:11px; }
+  .nums input{ width:100%; background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:5px; padding:3px 4px; font-size:11px; transition:border-color var(--ease); }
   .ahint{ font-size:10.5px; color:var(--sub); line-height:1.5; margin-top:6px; }
   #loading{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:10px; background:#11131a; z-index:50; color:var(--sub); font-size:13px; }
   .spin{ width:30px;height:30px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp 1s linear infinite;}
@@ -116,16 +133,25 @@
 </div>
 
 <div id="bar">
-  <button class="btn" id="adjust" title="パーツの位置・向き・大きさを調整">🔧 調整</button>
-  <select id="scheme" class="btn" title="作例スキーム">
-    <option value="">作例スキーム…</option>
-  </select>
-  <button class="btn" id="bg">背景</button>
-  <button class="btn" id="spin">自動回転</button>
-  <button class="btn" id="save">保存</button>
-  <button class="btn" id="load">読込</button>
-  <button class="btn" id="reset">リセット</button>
-  <button class="btn" id="shot">画像保存</button>
+  <div class="bargrp">
+    <button class="btn" id="adjust" title="パーツの位置・向き・大きさを調整">🔧 調整</button>
+    <select id="scheme" class="btn" title="作例スキーム">
+      <option value="">作例スキーム…</option>
+    </select>
+  </div>
+  <div class="bargrp">
+    <button class="btn" id="bg" title="背景を切り替え">🖼️ 背景</button>
+    <button class="btn" id="spin" title="自動回転のオン/オフ">🔄 自動回転</button>
+  </div>
+  <div class="bargrp">
+    <button class="btn" id="save" title="配色をブラウザに保存">💾 保存</button>
+    <button class="btn" id="load" title="保存した配色を読込">📂 読込</button>
+    <button class="btn" id="shot" title="現在の見た目を画像として保存">📷 画像保存</button>
+  </div>
+  <div class="bar-sep"></div>
+  <div class="bargrp">
+    <button class="btn" id="reset" title="配色を初期状態に戻す">♻️ リセット</button>
+  </div>
 </div>
 
 <div id="adjPanel">
@@ -735,6 +761,20 @@ function resize(){ const w=innerWidth,h=innerHeight; renderer.setSize(w,h,false)
   else { const panelW=(w<=760?280:330); camera.setViewOffset(w,h,-panelW*0.5,0,w,h); } }
 addEventListener('resize',resize); resize();
 renderer.setAnimationLoop(()=>{ controls.update(); renderer.render(scene,camera); });
+
+/* ---------- UI追加: グループ見出し折りたたみ (既存関数・状態は変更せず、表示のみをトグル) ---------- */
+partsEl.addEventListener('click', (e)=>{
+  const head = e.target.closest('.grp');
+  if(!head || !partsEl.contains(head)) return;
+  if(e.target.closest('.gbtn')) return; // 「まとめて選択」ボタンは折りたたみ対象外
+  head.classList.toggle('collapsed');
+  const collapsed = head.classList.contains('collapsed');
+  let sib = head.nextElementSibling;
+  while(sib && !sib.classList.contains('grp')){
+    sib.classList.toggle('grp-collapsed-row', collapsed);
+    sib = sib.nextElementSibling;
+  }
+});
 </script>
 </body>
 </html>
