@@ -1,6 +1,6 @@
 # Stack-chan Color Simulator 🎨
 
-M5Stack の **Stack-chan（SKU: K151, CoreS3版）** を 3D プリントで組むときの **配色を、ブラウザ上でパーツごとに試せる**シミュレーターです。フィラメント色のプリセットや自由配色、作例スキーム、PNG 書き出しなどに対応しています。
+M5Stack の **Stack-chan（SKU: K151, CoreS3版）** を 3D プリントで組むときの **配色を、ブラウザ上でパーツごとに試せる**シミュレーターです。フィラメント色のプリセット（約65色）や自由配色、作例スキーム、配色の共有URL・レシピ表示、PNG 書き出しなどに対応しています。
 
 A browser-based **color simulator** for the 3D-printed **M5Stack Stack-chan (SKU: K151, CoreS3)** — try filament colors per part, in 3D, before you print.
 
@@ -63,6 +63,6 @@ Thanks to Shinya Ishikawa (the Stack-chan creator), M5Stack, and the three.js au
 
 ## 📝 ライセンス / License
 
-- 本プロジェクトのコード: **MIT**（© 2026 kaburimen3） — [LICENSE](LICENSE)
+- 本プロジェクトのコード: **MIT**（© 2026 Stack-chan Color Simulator contributors） — [LICENSE](LICENSE)
 - 3D モデル: **M5Stack K151 / CoreS3-Lite（MIT, © 2021 M5Stack）** 由来 — 描画: **three.js（MIT）**
 - 詳細・帰属表示: [CREDITS.md](CREDITS.md)
