@@ -95,7 +95,38 @@
   .spin{ width:30px;height:30px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp 1s linear infinite;}
   @keyframes sp{to{transform:rotate(360deg)}}
   #err{ max-width:520px; text-align:center; color:#ff9a9a; font-size:12px; line-height:1.6; }
-  @media (max-width:760px){ #panel{ width:280px; } #bar{ max-width:calc(100% - 300px);} #hint{left:292px} }
+  #sheetToggle{ display:none; }
+  @media (max-width:760px){
+    #panel{
+      top:auto; left:0; right:0; bottom:0; width:100%; height:auto; max-height:82vh;
+      border-right:none; border-top:1px solid var(--line); border-radius:14px 14px 0 0;
+      transform:translateY(calc(100% - 44px)); transition:transform .22s ease;
+      box-shadow:0 -6px 24px rgba(0,0,0,.45);
+    }
+    #panel.open{ transform:translateY(0); }
+    #sheetToggle{
+      display:flex; position:absolute; top:0; left:0; right:0; height:44px; align-items:center; justify-content:center;
+      flex-direction:column; gap:3px; background:transparent; border:none; color:var(--text); font-size:12.5px; font-weight:600; cursor:pointer; z-index:1;
+    }
+    #sheetToggle::before{ content:""; display:block; width:40px; height:4px; border-radius:3px; background:var(--line); }
+    #panel header{ padding-top:50px; }
+    #panel .scroll{ max-height:38vh; min-height:0; }
+    #chipArea{ max-height:26vh; }
+    #notice{ font-size:0; line-height:0; padding:4px 12px; max-height:22px; overflow:hidden; transition:max-height .2s ease, font-size .2s ease, line-height .2s ease, padding .2s ease; }
+    #notice.expanded{ font-size:10.5px; line-height:1.5; max-height:220px; padding:7px 12px 8px; }
+    #notice::before{ content:"⚠️ 免責事項（タップで表示）"; display:block; font-size:10.5px; line-height:1.5; color:var(--sub); }
+    #notice.expanded::before{ display:none; }
+    #notice.expanded p{ font-size:10.5px; line-height:1.5; }
+    #notice p{ display:none; }
+    #notice.expanded p{ display:block; }
+    #bar{ top:6px; left:6px; right:6px; max-width:none; flex-wrap:nowrap; overflow-x:auto; justify-content:flex-start;
+          padding-bottom:4px; -webkit-overflow-scrolling:touch; }
+    #bar .bargrp{ flex:0 0 auto; }
+    #bar .btn, #bar select{ font-size:11px; padding:6px 8px; white-space:nowrap; }
+    #hint{ display:none; }
+    #adjPanel{ top:6px; left:6px; right:6px; width:auto; max-height:70vh; overflow-y:auto; }
+    .sw, .chip{ width:34px; height:34px; }
+  }
   /* toast */
   #toast{ position:fixed; left:50%; bottom:28px; transform:translate(-50%,10px); z-index:60;
           background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:var(--radius);
@@ -130,6 +161,7 @@
 <div id="app"><canvas id="c"></canvas></div>
 
 <div id="panel">
+  <button id="sheetToggle" type="button" aria-expanded="false">🎨 パーツと色</button>
   <header>
     <h1>Stack-chan 配色シミュレーター</h1>
     <p>M5Stack K151 ボディ ／ パーツごとに色を変えて確認</p>
@@ -1017,9 +1049,10 @@ document.getElementById('random').onclick=()=>{
 
 /* ---------- init & loop ---------- */
 buildParts(); buildPalette(); refreshSwatches(); renderRecentColors();
+const isMobileLayout=()=>matchMedia('(max-width:760px)').matches;
 function resize(){ const w=innerWidth,h=innerHeight; renderer.setSize(w,h,false); camera.aspect=w/h;
-  if(adjustMode){ camera.clearViewOffset(); camera.updateProjectionMatrix(); }
-  else { const panelW=(w<=760?280:330); camera.setViewOffset(w,h,-panelW*0.5,0,w,h); } }
+  if(adjustMode || isMobileLayout()){ camera.clearViewOffset(); camera.updateProjectionMatrix(); }
+  else { const panelW=330; camera.setViewOffset(w,h,-panelW*0.5,0,w,h); } }
 addEventListener('resize',resize); resize();
 renderer.setAnimationLoop(()=>{ controls.update(); renderer.render(scene,camera); });
 
@@ -1036,6 +1069,49 @@ partsEl.addEventListener('click', (e)=>{
     sib = sib.nextElementSibling;
   }
 });
+
+/* ---------- モバイル専用: ボトムシート化 (PC表示には一切影響しない。max-width:760px のみで動作) ---------- */
+(function(){
+  const mq = matchMedia('(max-width:760px)');
+  const panelEl = document.getElementById('panel');
+  const toggleBtn = document.getElementById('sheetToggle');
+  const noticeEl = document.getElementById('notice');
+
+  function isMobile(){ return mq.matches; }
+  function setSheetOpen(open){
+    if(!isMobile()) return;
+    panelEl.classList.toggle('open', open);
+    toggleBtn.setAttribute('aria-expanded', open?'true':'false');
+    // シート開閉でレイアウトが変わっても3Dキャンバスのサイズ計算自体は変わらない(下からの被り)が、
+    // 念のため既存の resize() を呼び直してビューを追従させる
+    resize();
+  }
+  toggleBtn.addEventListener('click', ()=>{ setSheetOpen(!panelEl.classList.contains('open')); });
+
+  // シート外(3D側)をタップしたら閉じる
+  canvas.addEventListener('pointerdown', ()=>{
+    if(isMobile() && panelEl.classList.contains('open')) setSheetOpen(false);
+  });
+
+  // 免責事項(#notice)はモバイルでは畳んでおき、タップで展開/折りたたみ
+  noticeEl.addEventListener('click', (e)=>{
+    if(!isMobile()) return;
+    if(e.target.closest('a')) return; // リンクタップ時は展開/折りたたみを誘発しない
+    noticeEl.classList.toggle('expanded');
+  });
+
+  // adjust モードに入る/出る際にシートの開閉状態が残らないようにする
+  const adjustBtn = document.getElementById('adjust');
+  adjustBtn.addEventListener('click', ()=>{
+    if(isMobile()) setSheetOpen(false);
+  });
+
+  // デスクトップ<->モバイルの境界をまたいでリサイズされた場合に備え、状態をクリーンにする
+  mq.addEventListener('change', (e)=>{
+    if(!e.matches){ panelEl.classList.remove('open'); noticeEl.classList.remove('expanded'); toggleBtn.setAttribute('aria-expanded','false'); }
+    resize();
+  });
+})();
 </script>
 </body>
 </html>
