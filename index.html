@@ -96,6 +96,7 @@
   @keyframes sp{to{transform:rotate(360deg)}}
   #err{ max-width:520px; text-align:center; color:#ff9a9a; font-size:12px; line-height:1.6; }
   #sheetToggle{ display:none; }
+  #adjToggle{ display:none; }
   @media (max-width:760px){
     #panel{
       top:auto; left:0; right:0; bottom:0; width:100%; height:auto; max-height:52vh;
@@ -128,7 +129,15 @@
     #bar .bargrp{ flex:0 0 auto; }
     #bar .btn, #bar select{ font-size:11px; padding:6px 8px; white-space:nowrap; }
     #hint{ display:none; }
-    #adjPanel{ top:6px; left:6px; right:6px; width:auto; max-height:70vh; overflow-y:auto; }
+    #adjPanel{ top:auto; left:0; right:0; bottom:0; width:auto; max-height:52vh; overflow-y:auto;
+      border:none; border-top:1px solid var(--line); border-radius:14px 14px 0 0;
+      transform:translateY(calc(100% - 44px)); transition:transform .22s ease;
+      box-shadow:0 -6px 24px rgba(0,0,0,.45); padding-top:0; }
+    #adjPanel.open{ transform:translateY(0); }
+    #adjToggle{ display:flex; position:sticky; top:0; z-index:1; margin:0 -12px; width:calc(100% + 24px); height:44px;
+      align-items:center; justify-content:center; flex-direction:column; gap:3px;
+      background:var(--panel); border:none; color:var(--text); font-size:12.5px; font-weight:600; cursor:pointer; }
+    #adjToggle::before{ content:""; display:block; width:40px; height:4px; border-radius:3px; background:var(--line); }
     .sw, .chip{ width:34px; height:34px; }
   }
   /* toast */
@@ -223,6 +232,7 @@
 </div>
 
 <div id="adjPanel">
+  <button id="adjToggle" type="button" aria-expanded="false">🔧 調整パネル</button>
   <h2>🔧 調整モード <span id="adjSel">パーツ未選択</span></h2>
   <div class="arow">
     <button class="btn amode on" data-mode="translate">移動</button>
@@ -1092,9 +1102,21 @@ partsEl.addEventListener('click', (e)=>{
   }
   toggleBtn.addEventListener('click', ()=>{ setSheetOpen(!panelEl.classList.contains('open')); });
 
-  // シート外(3D側)をタップしたら閉じる
+  // 調整パネルも同様にボトムシート化(モバイルのみ)
+  const adjPanelEl = document.getElementById('adjPanel');
+  const adjToggleBtn = document.getElementById('adjToggle');
+  function setAdjOpen(open){
+    if(!isMobile()) return;
+    adjPanelEl.classList.toggle('open', open);
+    adjToggleBtn.setAttribute('aria-expanded', open?'true':'false');
+  }
+  adjToggleBtn.addEventListener('click', ()=>{ setAdjOpen(!adjPanelEl.classList.contains('open')); });
+
+  // シート外(3D側)をタップしたら閉じる(色シート・調整パネルとも)
   canvas.addEventListener('pointerdown', ()=>{
-    if(isMobile() && panelEl.classList.contains('open')) setSheetOpen(false);
+    if(!isMobile()) return;
+    if(panelEl.classList.contains('open')) setSheetOpen(false);
+    if(adjPanelEl.classList.contains('open')) setAdjOpen(false);
   });
 
   // 免責事項(#notice)はモバイルでは畳んでおき、タップで展開/折りたたみ
@@ -1107,12 +1129,12 @@ partsEl.addEventListener('click', (e)=>{
   // adjust モードに入る/出る際にシートの開閉状態が残らないようにする
   const adjustBtn = document.getElementById('adjust');
   adjustBtn.addEventListener('click', ()=>{
-    if(isMobile()) setSheetOpen(false);
+    if(isMobile()){ setSheetOpen(false); setAdjOpen(false); }
   });
 
   // デスクトップ<->モバイルの境界をまたいでリサイズされた場合に備え、状態をクリーンにする
   mq.addEventListener('change', (e)=>{
-    if(!e.matches){ panelEl.classList.remove('open'); noticeEl.classList.remove('expanded'); toggleBtn.setAttribute('aria-expanded','false'); }
+    if(!e.matches){ panelEl.classList.remove('open'); adjPanelEl.classList.remove('open'); noticeEl.classList.remove('expanded'); toggleBtn.setAttribute('aria-expanded','false'); adjToggleBtn.setAttribute('aria-expanded','false'); }
     resize();
   });
 })();
