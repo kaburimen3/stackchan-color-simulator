@@ -98,10 +98,10 @@
   #sheetToggle{ display:none; }
   @media (max-width:760px){
     #panel{
-      top:auto; left:0; right:0; bottom:0; width:100%; height:auto; max-height:82vh;
+      top:auto; left:0; right:0; bottom:0; width:100%; height:auto; max-height:52vh;
       border-right:none; border-top:1px solid var(--line); border-radius:14px 14px 0 0;
       transform:translateY(calc(100% - 44px)); transition:transform .22s ease;
-      box-shadow:0 -6px 24px rgba(0,0,0,.45);
+      box-shadow:0 -6px 24px rgba(0,0,0,.45); overflow:hidden;
     }
     #panel.open{ transform:translateY(0); }
     #sheetToggle{
@@ -109,9 +109,13 @@
       flex-direction:column; gap:3px; background:transparent; border:none; color:var(--text); font-size:12.5px; font-weight:600; cursor:pointer; z-index:1;
     }
     #sheetToggle::before{ content:""; display:block; width:40px; height:4px; border-radius:3px; background:var(--line); }
-    #panel header{ padding-top:50px; }
-    #panel .scroll{ max-height:38vh; min-height:0; }
-    #chipArea{ max-height:26vh; }
+    #panel header{ display:none; }
+    #panel .scroll{ max-height:16vh; min-height:110px; margin-top:46px; }
+    #pal{ display:flex; flex-direction:column; min-height:0; flex:0 1 auto; }
+    #pal > *{ flex-shrink:0; }
+    #chipArea{ max-height:18vh; min-height:72px; flex:0 1 auto; }
+    #recentRow{ display:none !important; }
+    #notice{ flex-shrink:0; }
     #notice{ font-size:0; line-height:0; padding:4px 12px; max-height:22px; overflow:hidden; transition:max-height .2s ease, font-size .2s ease, line-height .2s ease, padding .2s ease; }
     #notice.expanded{ font-size:10.5px; line-height:1.5; max-height:220px; padding:7px 12px 8px; }
     #notice::before{ content:"⚠️ 免責事項（タップで表示）"; display:block; font-size:10.5px; line-height:1.5; color:var(--sub); }
